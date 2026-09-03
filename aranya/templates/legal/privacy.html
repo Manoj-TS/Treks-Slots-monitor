@@ -1,0 +1,92 @@
+{% extends "legal/_doc.html" %}
+{% block doc %}
+<div class="callout">
+  <p><strong>We never see your card details.</strong> Payments are handled entirely by
+  our payment provider. No card number, CVV or bank credential ever reaches our
+  servers or our database.</p>
+</div>
+
+<h2>What we collect, and why</h2>
+<table style="width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:14px">
+  <tr style="border-bottom:1px solid var(--border)">
+    <th style="text-align:left;padding:8px 8px 8px 0;color:var(--text-dim);font-weight:500">Data</th>
+    <th style="text-align:left;padding:8px;color:var(--text-dim);font-weight:500">Why</th>
+  </tr>
+  <tr style="border-bottom:1px solid var(--border)">
+    <td style="padding:8px 8px 8px 0">Email address</td>
+    <td style="padding:8px">To identify your account, confirm it, reset your password, and send payment receipts.</td>
+  </tr>
+  <tr style="border-bottom:1px solid var(--border)">
+    <td style="padding:8px 8px 8px 0">Name (optional)</td>
+    <td style="padding:8px">To address you in emails. You can leave it blank.</td>
+  </tr>
+  <tr style="border-bottom:1px solid var(--border)">
+    <td style="padding:8px 8px 8px 0">Password (hashed)</td>
+    <td style="padding:8px">Stored only as a salted scrypt hash. We cannot read your password.</td>
+  </tr>
+  <tr style="border-bottom:1px solid var(--border)">
+    <td style="padding:8px 8px 8px 0">Google account identifier</td>
+    <td style="padding:8px">Only if you sign in with Google, to recognise you on return.</td>
+  </tr>
+  <tr style="border-bottom:1px solid var(--border)">
+    <td style="padding:8px 8px 8px 0">Your trek list and settings</td>
+    <td style="padding:8px">To build your board and remember it between visits.</td>
+  </tr>
+  <tr style="border-bottom:1px solid var(--border)">
+    <td style="padding:8px 8px 8px 0">IP address, browser, sign-in times</td>
+    <td style="padding:8px">Security: detecting abuse and unauthorised access.</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 8px 8px 0">Payment metadata</td>
+    <td style="padding:8px">Amount, date, reference and access granted — for receipts and statutory records. <strong>Not</strong> card details.</td>
+  </tr>
+</table>
+<p>We do not collect your date of birth, address, or trekking history, and we do
+not run advertising or third-party analytics trackers.</p>
+
+<h2>Cookies</h2>
+<p>We use two strictly necessary cookies: one to keep you signed in, and one
+carrying a token that protects against cross-site request forgery. There are no
+advertising or tracking cookies, so there is nothing to opt out of.</p>
+
+<h2>Who else processes your data</h2>
+<ul>
+  <li><strong>Zoho Mail</strong> — delivers our account emails.</li>
+  <li><strong>Google</strong> — only if you choose to sign in with Google.</li>
+  <li><strong>Our payment provider</strong> — processes payments and holds the card
+      details we never see.</li>
+  <li><strong>Our hosting provider</strong> — runs the servers the Service sits on.</li>
+</ul>
+<p>We do not sell your data, and we do not share it for marketing.</p>
+
+<h2>How long we keep it</h2>
+<ul>
+  <li>Account data: until you ask us to delete it.</li>
+  <li>Sessions: 30 days, or until you sign out.</li>
+  <li>Payment records: retained as required by tax and accounting law, even after
+      account deletion. This is why an erasure request removes your personal
+      details but leaves the transaction record.</li>
+</ul>
+
+<h2>Your rights</h2>
+<p>You may ask us to give you a copy of your data, correct it, or delete it, and
+you may withdraw consent at any time. Email
+<a href="mailto:{{ support_email }}">{{ support_email }}</a> from your account address and we
+will respond within 30 days. On deletion we remove your email, name and trek
+lists, and sign out all your sessions.</p>
+
+<h2>Security</h2>
+<p>The site is served over HTTPS. Passwords are stored only as scrypt hashes;
+session and email tokens are stored only as SHA-256 hashes, so a copy of our
+database would not let anyone sign in as you. Access to the servers is restricted
+to the operator.</p>
+
+<h2>Grievance contact</h2>
+<p>Concerns about how we handle your data:
+<a href="mailto:{{ support_email }}">{{ support_email }}</a>, subject line "Grievance". Full
+details on our <a href="{{ url_for('public.contact') }}">contact page</a>.</p>
+
+<h2>Changes</h2>
+<p>Material changes will be posted here with a new date, and we will email you if
+the change materially affects your rights.</p>
+{% endblock %}

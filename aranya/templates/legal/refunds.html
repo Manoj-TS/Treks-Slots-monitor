@@ -1,0 +1,41 @@
+{% extends "legal/_doc.html" %}
+{% block doc %}
+<h2>There is nothing to cancel</h2>
+<p>Access to Aranya is a <strong>one-time payment of ₹{{ price }} for {{ access_days }} days</strong>. It is
+not a subscription. There is no auto-renewal, no recurring mandate, and no stored
+card. When the {{ access_days }} days end, access simply stops and you are not charged again,
+so you never need to cancel anything to avoid a future charge.</p>
+
+<h2>When we will refund you</h2>
+<p>We will refund your payment in full if:</p>
+<ul>
+  <li>you were charged more than once for the same access period;</li>
+  <li>you paid but access was never enabled on your account;</li>
+  <li>the Service failed to update availability for more than <strong>24 consecutive
+      hours</strong> during your access period, and you tell us within 7 days of that
+      outage.</li>
+</ul>
+<p>We will refund a fair pro-rata portion if a fault on our side made the Service
+substantially unusable for a significant part of your access period.</p>
+
+<h2>When we will not refund you</h2>
+<ul>
+  <li>Change of mind after you have used the Service.</li>
+  <li>The official portal being down, slow, changed, or showing different data.
+      That portal is outside our control.</li>
+  <li>A trek you wanted being sold out, or a booking you did not manage to make.
+      Aranya displays availability; it never reserves anything.</li>
+  <li>Account suspension for a material breach of our
+      <a href="{{ url_for('public.terms') }}">Terms of Service</a>.</li>
+</ul>
+
+<h2>How to request a refund</h2>
+<p>Email <a href="mailto:{{ support_email }}">{{ support_email }}</a> from the address on your
+account, with the date of payment and what went wrong. We aim to respond within
+2 business days.</p>
+
+<h2>How refunds are paid</h2>
+<p>Approved refunds are returned to the original payment method. Once processed,
+funds typically appear within 5 to 7 business days, depending on your bank or
+payment provider.</p>
+{% endblock %}

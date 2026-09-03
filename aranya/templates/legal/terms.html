@@ -1,0 +1,81 @@
+{% extends "legal/_doc.html" %}
+{% block doc %}
+<div class="callout">
+  <p><strong>Aranya is an unofficial, independent service.</strong> It is not affiliated
+  with, endorsed by, or connected to the Karnataka Forest Department, the Aranya
+  Vihaara portal, or any government body. We do not sell trek permits.</p>
+</div>
+
+<h2>1. What Aranya is</h2>
+<p>Aranya (the Service) displays trek slot availability that is already published
+publicly on the Karnataka Forest Department's Aranya Vihaara portal
+(aranyavihaara.karnataka.gov.in), collected into a single view. The Service is
+provided by an independent operator based in Karnataka, India.</p>
+
+<h2>2. What Aranya is not</h2>
+<ul>
+  <li>It is <strong>not</strong> a booking service. No trek can be reserved through Aranya.</li>
+  <li>It does <strong>not</strong> hold, sell, transfer or reserve permits, seats or tickets.</li>
+  <li>It is <strong>not</strong> operated by or on behalf of any government department.</li>
+  <li>Your payment to us buys access to the Service only. It confers no right,
+      priority or advantage of any kind on the official portal.</li>
+</ul>
+
+<h2>3. Accuracy and availability</h2>
+<p>Information is read from a third-party website we do not control. It may be
+delayed, incomplete, out of date, or wrong, and the Service may be unavailable at
+any time without notice. A slot shown as open may be unavailable by the time you
+reach the official portal, and the reverse is equally possible.</p>
+<p><strong>Always confirm availability on the official portal before making any
+commitment to a customer or third party.</strong> We are not liable for any loss
+arising from reliance on what the Service displays.</p>
+
+<h2>4. Your account</h2>
+<ul>
+  <li>An account is for one person. Do not share your credentials.</li>
+  <li>You are responsible for activity under your account and for keeping your
+      password secure.</li>
+  <li>Provide an email address you control; we use it for account and payment
+      correspondence.</li>
+  <li>We may limit the number of simultaneous sessions on an account.</li>
+</ul>
+
+<h2>5. Acceptable use</h2>
+<p>You agree not to:</p>
+<ul>
+  <li>resell, redistribute or republish data obtained from the Service;</li>
+  <li>share or resell account access;</li>
+  <li>scrape, automate against, or place unreasonable load on the Service;</li>
+  <li>attempt to gain unauthorised access to the Service or to other accounts;</li>
+  <li>use the Service unlawfully, or in breach of the official portal's own terms.</li>
+</ul>
+<p>We may suspend or terminate an account that breaches these terms, without refund
+where the breach is material.</p>
+
+<h2>6. Fees</h2>
+<p>Access costs ₹{{ price }} for {{ access_days }} days, inclusive of applicable taxes. It is a
+one-time payment: there is no subscription, no auto-renewal and no stored card.
+Access ends automatically when the period expires. See our
+<a href="{{ url_for('public.refunds') }}">Refund &amp; Cancellation Policy</a>.</p>
+
+<h2>7. Changes to the Service</h2>
+<p>Features may change, and the Service depends on a third-party portal whose
+structure can change without notice. If that happens, availability data may be
+unavailable until we adapt. Material changes to these terms will be posted on this
+page with an updated date.</p>
+
+<h2>8. Limitation of liability</h2>
+<p>The Service is provided as is, without warranty of any kind. To the maximum
+extent permitted by law, our total liability for any claim relating to the Service
+is limited to the amount you paid us in the {{ access_days }} days preceding the claim. We are
+not liable for indirect or consequential loss, including lost bookings, lost
+business or lost profits.</p>
+
+<h2>9. Governing law</h2>
+<p>These terms are governed by the laws of India. The courts at Bengaluru,
+Karnataka have exclusive jurisdiction.</p>
+
+<h2>10. Contact</h2>
+<p>Questions about these terms: <a href="mailto:{{ support_email }}">{{ support_email }}</a>.
+See our <a href="{{ url_for('public.contact') }}">contact page</a> for full details.</p>
+{% endblock %}

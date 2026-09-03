@@ -25,12 +25,9 @@ def healthz():
                      "cycle": state.stats.get("cycle", 0)}), 200 if ok else 503)
 
 
-@bp.route("/")
+@bp.route("/app")
+@security.paid_required
 def index():
-    if not getattr(g, "user", None):
-        return redirect(url_for("auth.login"))
-    if not g.user.has_access:
-        return redirect("/billing")
     return render_template("dashboard.html", asset_version=config.ASSET_VERSION,
                            csrf=security.csrf_token())
 

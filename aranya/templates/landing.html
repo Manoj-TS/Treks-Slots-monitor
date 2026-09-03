@@ -1,0 +1,325 @@
+{% extends "public_base.html" %}
+{% block body %}
+
+<section class="hero lp-wrap">
+  <h1>Every trek slot you care about, on one board</h1>
+  <p class="sub">
+    The forest department portal shows you one trek, on one date, at a time.
+    Aranya shows every trek you follow across the next {{ access_days }} days of
+    weekends — in a single screen that updates itself.
+  </p>
+  <p class="aud">Built for trek organisers planning group departures</p>
+
+  <div class="cta-row">
+    {% if user %}
+      <a class="btn-cta" href="/app">Open your board</a>
+    {% else %}
+      <a class="btn-cta" href="{{ url_for('auth.signup') }}">Get access — ₹{{ price }} for {{ access_days }} days</a>
+      <a class="btn-ghost" href="#how">See how it works</a>
+    {% endif %}
+  </div>
+  <p class="fine">One-time payment · No auto-renew · No card stored</p>
+
+  <div class="unofficial">
+    <span>⚠️</span>
+    <span><strong>Unofficial.</strong> Not affiliated with the Karnataka Forest Department.
+    Aranya only <em>shows</em> availability — you still book on
+    <a href="https://aranyavihaara.karnataka.gov.in" rel="noopener noreferrer" target="_blank">the official portal</a>.</span>
+  </div>
+</section>
+
+<section class="sec lp-wrap">
+  <div class="eyebrow">The problem</div>
+  <h2>Checking six treks for one weekend takes about forty clicks</h2>
+  <p class="lede">
+    And the answer is stale by the time you've finished, so you start again.
+  </p>
+
+  <div class="compare">
+    <div class="cmp bad">
+      <h3>On the portal</h3>
+      <div class="h-mt">For every single trek, for every single date</div>
+      <ol>
+        <li>Choose the district</li>
+        <li>Choose the trek</li>
+        <li>Pick the date</li>
+        <li>Read the seat count</li>
+        <li>Go back and change one thing</li>
+        <li>Repeat</li>
+      </ol>
+      <div class="tally">6 treks × 8 weekend dates = <b>48 separate lookups</b></div>
+    </div>
+    <div class="cmp good">
+      <h3>On Aranya</h3>
+      <div class="h-mt">All of it at once, refreshing on its own</div>
+      <ul>
+        <li>Pick your treks once</li>
+        <li>Open the board</li>
+        <li>Read the whole month across every trek</li>
+        <li>Sold out fades back, open seats stand out</li>
+        <li>A bar shows how fast a slot is filling</li>
+      </ul>
+      <div class="tally">6 treks × 8 weekend dates = <b>one screen</b></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec lp-wrap">
+  <div class="eyebrow">The board</div>
+  <h2>Your treks down the side, the weekends across the top</h2>
+  <p class="lede">
+    Open slots are tinted green with the seats remaining. Sold out is deliberately
+    quiet — it's the boring answer, so it gets out of your way.
+  </p>
+
+  <div class="mock">
+    <div class="mock-bar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span class="t">aranyavihaara.org/app</span>
+    </div>
+    <div class="mock-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:left">Trek</th>
+            <th>Sat<span class="dd">12</span></th>
+            <th>Sun<span class="dd">13</span></th>
+            <th>Sat<span class="dd">19</span></th>
+            <th>Sun<span class="dd">20</span></th>
+            <th>Sat<span class="dd">26</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="nm">Kudremukha<small>Chikkamagaluru</small></td>
+            <td><span class="sold">sold out</span><span class="n sold">0/300</span></td>
+            <td><span class="sold">sold out</span><span class="n sold">0/300</span></td>
+            <td class="is-open"><span class="open">open</span><span class="n open">42/300</span></td>
+            <td class="is-open"><span class="open">open</span><span class="n open">118/300</span></td>
+            <td><span class="soon">unreleased</span></td>
+          </tr>
+          <tr>
+            <td class="nm">Bandaje<small>Chikkamagaluru</small></td>
+            <td><span class="sold">sold out</span><span class="n sold">0/120</span></td>
+            <td class="is-open"><span class="open">open</span><span class="n open">9/120</span></td>
+            <td class="is-open"><span class="open">open</span><span class="n open">64/120</span></td>
+            <td><span class="sold">sold out</span><span class="n sold">0/120</span></td>
+            <td><span class="soon">unreleased</span></td>
+          </tr>
+          <tr>
+            <td class="nm">Kurinjal<small>Chikkamagaluru</small></td>
+            <td class="is-open"><span class="open">open</span><span class="n open">27/200</span></td>
+            <td class="is-open"><span class="open">open</span><span class="n open">153/200</span></td>
+            <td class="is-open"><span class="open">open</span><span class="n open">180/200</span></td>
+            <td class="is-open"><span class="open">open</span><span class="n open">191/200</span></td>
+            <td><span class="soon">unreleased</span></td>
+          </tr>
+          <tr>
+            <td class="nm">Netravathi<small>Dakshina Kannada</small></td>
+            <td><span class="sold">sold out</span><span class="n sold">0/150</span></td>
+            <td><span class="sold">sold out</span><span class="n sold">0/150</span></td>
+            <td><span class="sold">sold out</span><span class="n sold">0/150</span></td>
+            <td class="is-open"><span class="open">open</span><span class="n open">31/150</span></td>
+            <td><span class="soon">unreleased</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p class="mock-cap">Sample view. Your board shows the treks you choose.</p>
+</section>
+
+<section class="sec lp-wrap">
+  <div class="eyebrow">What you get</div>
+  <h2>Everything included for ₹{{ price }}</h2>
+  <div class="grid3">
+    <div class="feat">
+      <span class="ic">📋</span>
+      <h3>The weekend board</h3>
+      <p>Every trek you follow, every Saturday and Sunday in the booking window,
+         with live seat counts and a bar showing how full each slot is.</p>
+    </div>
+    <div class="feat">
+      <span class="ic">🗓️</span>
+      <h3>Full month calendar</h3>
+      <p>Any single trek, day by day across a whole month — including weekdays,
+         for groups that don't travel at the weekend.</p>
+    </div>
+    <div class="feat">
+      <span class="ic">📌</span>
+      <h3>Pinned dates</h3>
+      <p>Watching one specific departure? Pin that trek and date and it stays at
+         the top of your board.</p>
+    </div>
+    <div class="feat">
+      <span class="ic">🔄</span>
+      <h3>Updates itself</h3>
+      <p>The board refreshes on its own while it's open. No reloading, no
+         re-navigating the portal.</p>
+    </div>
+    <div class="feat">
+      <span class="ic">📱</span>
+      <h3>Works on your phone</h3>
+      <p>The same board on mobile, which is where you'll actually check it when a
+         client asks whether a date is still open.</p>
+    </div>
+    <div class="feat">
+      <span class="ic">🎨</span>
+      <h3>Yours to arrange</h3>
+      <p>Reorder treks, group by district, switch the window between 7, 14 and 30
+         days, and adjust the type size and theme.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec lp-wrap" id="how">
+  <div class="eyebrow">How it works</div>
+  <h2>Three steps</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="n">1</div>
+      <h3>Pick your treks</h3>
+      <p>Choose from the full catalogue of treks on the portal. Add or remove them
+         whenever you like.</p>
+    </div>
+    <div class="step">
+      <div class="n">2</div>
+      <h3>Watch the board</h3>
+      <p>Availability for all of them, side by side, across the whole booking
+         window.</p>
+    </div>
+    <div class="step">
+      <div class="n">3</div>
+      <h3>Book on the official portal</h3>
+      <p>When you see what you need, you book it on the forest department's own
+         site. Aranya never takes a trek booking or a trek payment.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec lp-wrap">
+  <div class="eyebrow">Pricing</div>
+  <h2>One price, everything included</h2>
+  <div class="price-card">
+    <div class="amt">₹{{ price }}</div>
+    <div class="per">for {{ access_days }} days of access</div>
+    <ul>
+      <li>Unlimited treks on your board</li>
+      <li>Weekend board, month calendar and pinned dates</li>
+      <li>Works on desktop and mobile</li>
+      <li><strong>No auto-renew.</strong> It simply ends — nothing to cancel</li>
+      <li>No card details stored by us</li>
+    </ul>
+    {% if user %}
+      <a class="btn-cta" href="/app">Open your board</a>
+    {% else %}
+      <a class="btn-cta" href="{{ url_for('auth.signup') }}">Create your account</a>
+    {% endif %}
+    <p class="price-note">Pay again whenever you want more time. Prices include all taxes.</p>
+  </div>
+</section>
+
+<section class="sec lp-wrap">
+  <div class="eyebrow">Where this is going</div>
+  <h2>One place for everything trekking in Karnataka</h2>
+  <p class="lede">
+    The slot board is the first piece. The plan is to connect the people a trek
+    actually depends on. <strong>None of the following is built yet, and none of it
+    is included in the ₹{{ price }} today</strong> — it's here so you know the direction.
+  </p>
+  <div class="road">
+    <div class="road-item">
+      <span class="road-tag">Planned</span>
+      <h3>Homestays &amp; their rates</h3>
+      <p>Where your group sleeps the night before, with prices, in the same place
+         you checked the slots.</p>
+    </div>
+    <div class="road-item">
+      <span class="road-tag">Planned</span>
+      <h3>Transport operators</h3>
+      <p>Tempo travellers and jeeps that actually run those routes, with the
+         operators who know them.</p>
+    </div>
+    <div class="road-item">
+      <span class="road-tag">Exploring</span>
+      <h3>Organiser listings</h3>
+      <p>A way for trekkers to find the organisers running a departure, rather
+         than the other way round.</p>
+    </div>
+    <div class="road-item">
+      <span class="road-tag">Exploring</span>
+      <h3>Working with the department</h3>
+      <p>If there's an official route to doing this properly, we'd rather take it
+         than scrape a public page.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec lp-wrap lp-narrow">
+  <div class="eyebrow">Questions</div>
+  <h2>Straight answers</h2>
+  <div class="faq">
+    <details open>
+      <summary>Is this the official Karnataka Forest Department site?</summary>
+      <p>No. Aranya is independent and unofficial, with no affiliation to or
+         endorsement from the Forest Department. The official portal is
+         aranyavihaara.karnataka.gov.in and that is where all trek bookings and
+         payments happen.</p>
+    </details>
+    <details>
+      <summary>Can I book a trek through Aranya?</summary>
+      <p>No, and that's deliberate. Aranya only shows you what the portal is
+         already showing publicly, gathered into one view. You book on the
+         official portal. The ₹{{ price }} is for access to the board, and buys nothing
+         on the portal itself.</p>
+    </details>
+    <details>
+      <summary>Will it alert me when a slot opens?</summary>
+      <p>No. Bookings open at a fixed time that everyone already knows, and this
+         portal doesn't cancel or re-release tickets — so there's no surprise
+         moment worth alerting on. Aranya is a board you check, not a race you
+         win. Anyone selling you alerts for this is selling you something that
+         doesn't help.</p>
+    </details>
+    <details>
+      <summary>How current are the numbers?</summary>
+      <p>The board re-checks continuously and shows when it last updated. It reads
+         the portal's own public pages, so if the portal is slow, wrong or down,
+         the board reflects that. Always confirm on the official portal before
+         promising a seat to a client.</p>
+    </details>
+    <details>
+      <summary>What happens after {{ access_days }} days?</summary>
+      <p>Access simply stops. There's no auto-renew and no subscription to cancel
+         — nothing is charged again unless you choose to pay again. Your trek list
+         is kept, so it's all still there when you come back.</p>
+    </details>
+    <details>
+      <summary>How do I pay?</summary>
+      <p>Create an account and you'll see the payment instructions. Online
+         card payment is being set up; right now access is enabled manually as
+         soon as payment reaches us, usually within a few hours.</p>
+    </details>
+    <details>
+      <summary>Can I share my login with my team?</summary>
+      <p>An account is for one person. There's a limit on how many devices can
+         watch the board at once, and heavy sharing may get an account suspended.
+         If you need several people on it, get in touch and we'll work something
+         out.</p>
+    </details>
+  </div>
+</section>
+
+<section class="sec lp-wrap" style="text-align:center">
+  <h2>Ready to stop clicking?</h2>
+  <p class="lede" style="margin:0 auto 26px">
+    Create an account, pick your treks, and see the whole month at once.
+  </p>
+  {% if user %}
+    <a class="btn-cta" href="/app">Open your board</a>
+  {% else %}
+    <a class="btn-cta" href="{{ url_for('auth.signup') }}">Get access — ₹{{ price }} for {{ access_days }} days</a>
+  {% endif %}
+</section>
+
+{% endblock %}

@@ -175,7 +175,7 @@ def logout():
             accounts.revoke_session(token)
         except Exception as e:
             print(f"[Auth] logout: {e}")
-    resp = redirect(url_for("main.index"))
+    resp = redirect(url_for("public.landing"))
     resp.delete_cookie(config.SESSION_COOKIE, path="/")
     resp.delete_cookie(config.CSRF_COOKIE, path="/")
     session.clear()

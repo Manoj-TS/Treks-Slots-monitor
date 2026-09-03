@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Aranya — Karnataka trek slot board{% endblock %}</title>
+<meta name="description" content="{% block description %}See seat availability for every Karnataka forest-department trek you care about on one board, across the next 30 days — instead of clicking the portal trek by trek, date by date.{% endblock %}">
+{% block robots %}<meta name="robots" content="index,follow">{% endblock %}
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Aranya">
+<meta property="og:title" content="{{ self.title() }}">
+<meta property="og:description" content="{{ self.description() }}">
+<meta property="og:url" content="{{ request.url }}">
+<meta name="twitter:card" content="summary">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ asset_version }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}?v={{ asset_version }}">
+</head>
+<body>
+
+<nav class="lp-nav">
+  <div class="lp-wrap inner">
+    <a class="lp-brand" href="{{ url_for('public.landing') }}">
+      <div class="logo">&#9968;</div>
+      <div><div class="nm">Aranya</div><div class="sb">Unofficial slot board</div></div>
+    </a>
+    <div class="links">
+      {% if user %}
+        <a class="txt" href="{{ url_for('auth.account') }}">Account</a>
+        <a class="btn-cta" href="/app">Open your board</a>
+      {% else %}
+        <a class="txt" href="{{ url_for('auth.login') }}">Sign in</a>
+        <a class="btn-cta" href="{{ url_for('auth.signup') }}">Get access</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+{% block body %}{% endblock %}
+
+<footer class="lp-foot">
+  <div class="lp-wrap">
+    <div class="cols">
+      <div>
+        <div class="ft">Aranya</div>
+        <a href="{{ url_for('public.landing') }}">Home</a>
+        {% if user %}
+          <a href="/app">Your board</a>
+          <a href="{{ url_for('auth.account') }}">Account</a>
+        {% else %}
+          <a href="{{ url_for('auth.signup') }}">Get access</a>
+          <a href="{{ url_for('auth.login') }}">Sign in</a>
+        {% endif %}
+      </div>
+      <div>
+        <div class="ft">Legal</div>
+        <a href="{{ url_for('public.terms') }}">Terms of Service</a>
+        <a href="{{ url_for('public.privacy') }}">Privacy Policy</a>
+        <a href="{{ url_for('public.refunds') }}">Refunds &amp; Cancellation</a>
+        <a href="{{ url_for('public.delivery') }}">Delivery Policy</a>
+      </div>
+      <div>
+        <div class="ft">Contact</div>
+        <a href="{{ url_for('public.contact') }}">Contact us</a>
+        <a href="mailto:{{ support_email }}">{{ support_email }}</a>
+      </div>
+    </div>
+    <div class="bottom">
+      <strong>Aranya is an unofficial, independent service.</strong> It is not affiliated
+      with, endorsed by, or connected to the Karnataka Forest Department or the
+      Aranya Vihaara portal. Availability shown here is read from the public pages of
+      <a href="https://aranyavihaara.karnataka.gov.in" rel="noopener noreferrer" target="_blank">aranyavihaara.karnataka.gov.in</a>,
+      may be delayed or inaccurate, and all bookings and payments for treks must be
+      made on that official portal. &copy; {{ 2026 }} Aranya.
+    </div>
+  </div>
+</footer>
+</body>
+</html>

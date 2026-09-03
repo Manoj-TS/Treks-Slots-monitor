@@ -1,0 +1,35 @@
+{% extends "legal/_doc.html" %}
+{% block doc %}
+<p>We are a small independent operation. Email is the fastest way to reach us, and
+we aim to reply within 2 business days.</p>
+
+<h2>Email</h2>
+<p><a href="mailto:{{ support_email }}">{{ support_email }}</a><br>
+For account problems, payments, refunds and anything else.</p>
+
+<h2>Registered operator</h2>
+<p>
+  {% if business_name %}{{ business_name }}{% else %}
+  <em style="color:var(--warn)">[Business name not yet configured — set BUSINESS_NAME]</em>{% endif %}<br>
+  {% if business_address %}{{ business_address }}{% else %}
+  <em style="color:var(--warn)">[Postal address not yet configured — set BUSINESS_ADDRESS]</em>{% endif %}
+</p>
+
+<h2>Phone</h2>
+<p>
+  {% if business_phone %}<a href="tel:{{ business_phone | replace(' ', '') }}">{{ business_phone }}</a>
+  {% else %}<em style="color:var(--warn)">[Phone number not yet configured — set BUSINESS_PHONE]</em>{% endif %}
+</p>
+
+<h2>Grievances and data requests</h2>
+<p>For complaints, or to request a copy or deletion of your personal data, email
+<a href="mailto:{{ support_email }}">{{ support_email }}</a> with "Grievance" or "Data request"
+in the subject. See our <a href="{{ url_for('public.privacy') }}">Privacy Policy</a> for
+what we hold and your rights over it.</p>
+
+<h2>Trek bookings and permits</h2>
+<p>We cannot help with trek bookings, permits, cancellations or refunds for treks
+themselves — we have no access to any of that. Those are handled entirely by the
+Karnataka Forest Department through
+<a href="https://aranyavihaara.karnataka.gov.in" rel="noopener noreferrer" target="_blank">aranyavihaara.karnataka.gov.in</a>.</p>
+{% endblock %}

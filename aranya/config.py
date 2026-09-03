@@ -74,6 +74,14 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "support@aranyavihaara.org")
 MAIL_FROM_NAME = "Aranya"
 
+# ── Business identity ─────────────────────────────────────────────────────── #
+# Razorpay's onboarding review requires a contactable phone number and a postal
+# address published on the site. Set these in .env before applying — the contact
+# page shows a visible placeholder until you do.
+BUSINESS_NAME = os.environ.get("BUSINESS_NAME", "")
+BUSINESS_PHONE = os.environ.get("BUSINESS_PHONE", "")
+BUSINESS_ADDRESS = os.environ.get("BUSINESS_ADDRESS", "")
+
 
 def mail_configured() -> bool:
     return bool(SMTP_USER and SMTP_PASSWORD)

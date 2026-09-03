@@ -1,0 +1,30 @@
+{% extends "legal/_doc.html" %}
+{% block doc %}
+<h2>This is a digital service</h2>
+<p>Aranya is web-based software. <strong>Nothing is physically shipped</strong>, and no
+delivery address is required or collected.</p>
+
+<h2>How access is delivered</h2>
+<p>Access is granted to the account you registered with, and is available
+immediately at <a href="{{ url_for('public.landing') }}">aranyavihaara.org</a> once your
+payment is confirmed. You use it by signing in with your email address. There is
+nothing to download or install.</p>
+
+<h2>Timing</h2>
+<ul>
+  <li><strong>Automatic payments:</strong> access is enabled immediately on confirmation.</li>
+  <li><strong>Manual payments:</strong> while online card payment is being set up,
+      access is enabled by hand after payment reaches us, usually within a few
+      hours and always within one business day.</li>
+</ul>
+
+<h2>If access does not appear</h2>
+<p>Email <a href="mailto:{{ support_email }}">{{ support_email }}</a> from your account's email
+address with the payment details, and we will either enable it or refund you in
+full. See the <a href="{{ url_for('public.refunds') }}">Refund &amp; Cancellation Policy</a>.</p>
+
+<h2>Duration</h2>
+<p>Access runs for {{ access_days }} days from the moment it is enabled. If you pay again while
+access is still active, the new days are added to the end of your existing period,
+so you never lose days by paying early.</p>
+{% endblock %}

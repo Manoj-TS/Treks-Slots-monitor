@@ -1,0 +1,10 @@
+{% extends "public_base.html" %}
+{% block title %}{{ title }} · Aranya{% endblock %}
+{% block body %}
+<div class="lp-wrap lp-narrow doc">
+  <h1>{{ title }}</h1>
+  <div class="upd">Last updated {{ updated }}</div>
+  {% block doc %}{% endblock %}
+  <p style="margin-top:36px"><a href="{{ url_for('public.landing') }}">← Back to Aranya</a></p>
+</div>
+{% endblock %}

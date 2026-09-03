@@ -43,6 +43,9 @@ def create_app():
                 "asset_version": config.ASSET_VERSION,
                 "google_enabled": oauth.enabled()}
 
+    from . import public_routes
+    app.register_blueprint(public_routes.bp)
+
     from . import routes
     app.register_blueprint(routes.bp)
 
