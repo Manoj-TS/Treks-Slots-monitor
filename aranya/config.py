@@ -29,6 +29,41 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 OWNER_USER_ID = 1
 OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "owner@aranyavihaara.org")
 
+# ── Accounts / sessions ───────────────────────────────────────────────────── #
+
+# Absolute base for links in emails. NEVER build these from request.host —
+# host-header injection into a password-reset link is account takeover.
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://localhost:5020").rstrip("/")
+
+SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "")
+
+SESSION_COOKIE = "av_session"
+CSRF_COOKIE = "av_csrf"
+SESSION_DAYS = 30
+VERIFY_TOKEN_HOURS = 24
+RESET_TOKEN_MINUTES = 60
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+
+# ── Outbound mail (Zoho, India data centre) ───────────────────────────────── #
+
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.zoho.in")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "465"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "support@aranyavihaara.org")
+MAIL_FROM_NAME = "Aranya"
+
+
+def mail_configured() -> bool:
+    return bool(SMTP_USER and SMTP_PASSWORD)
+
+
+def auth_configured() -> bool:
+    """Accounts require both a database and a signing key."""
+    return bool(DATABASE_URL and SECRET_KEY)
+
 DISTRICT_NAMES = {
     4: "Kalaburagi", 11: "Chikkaballapura", 15: "Shivamogga", 16: "Udupi",
     17: "Chikkamagaluru", 19: "Kolar", 21: "Bengaluru Gramantara",

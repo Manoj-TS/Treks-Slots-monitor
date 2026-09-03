@@ -159,9 +159,13 @@ def _ensure_owner():
         row = conn.execute("SELECT id FROM users WHERE id = %s", (config.OWNER_USER_ID,)).fetchone()
         if row:
             return
+        # access_until stays NULL: is_admin already bypasses the paywall, and a
+        # literal 'infinity' timestamptz is valid in Postgres but cannot be
+        # loaded into a Python datetime (max year 9999) — it raises DataError
+        # on every read of this row.
         conn.execute(
-            "INSERT INTO users (id, email, email_verified, name, is_admin, access_until)"
-            " VALUES (%s, %s, true, 'Owner', true, 'infinity')"
+            "INSERT INTO users (id, email, email_verified, name, is_admin)"
+            " VALUES (%s, %s, true, 'Owner', true)"
             " ON CONFLICT (id) DO NOTHING",
             (config.OWNER_USER_ID, config.OWNER_EMAIL))
         # bigserial keeps its own counter; nudge it past the explicit id we just used.
