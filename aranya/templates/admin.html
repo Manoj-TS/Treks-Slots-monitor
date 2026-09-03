@@ -1,0 +1,99 @@
+{% extends "auth/base.html" %}
+{% block title %}Admin · Aranya{% endblock %}
+{% block content %}
+<style>
+  /* The auth card is sized for a login form; the user table needs room. */
+  .auth-wrap{max-width:1000px}
+  .u-tbl{width:100%;border-collapse:collapse;margin-top:6px;font-size:.82rem}
+  .u-tbl th{text-align:left;font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--text-dim);padding:8px 8px;border-bottom:1px solid var(--border)}
+  .u-tbl td{padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+  .u-tbl tr:hover td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+  .u-em{color:var(--text-bright);font-weight:500}
+  .u-mt{font-size:.7rem;color:var(--text-dim)}
+  .inline-form{display:flex;gap:6px;align-items:center}
+  .inline-form input[type=number]{width:64px;padding:6px}
+  .inline-form input[type=text]{width:120px;padding:6px}
+  .stat-strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .stat-strip .s{padding:6px 11px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:20px;font-size:.76rem;color:var(--text-dim)}
+  .stat-strip .s b{color:var(--text-bright);font-weight:500;font-family:var(--font-mono)}
+  .stat-strip .s.bad{border-color:color-mix(in srgb,var(--danger) 45%,var(--border));color:var(--danger)}
+</style>
+
+<h2>Operator console</h2>
+<div class="lead">Grant access after taking payment however you like. Every grant is
+  recorded in the payments ledger.</div>
+
+<div class="stat-strip">
+  <span class="s">sweep <b>{{ stats.cycle }}</b></span>
+  <span class="s">targets <b>{{ stats.targets }}</b></span>
+  <span class="s">sold-out skipped <b>{{ stats.skipped }}</b></span>
+  <span class="s {{ '' if stats.worker_alive else 'bad' }}">worker
+    <b>{{ 'alive' if stats.worker_alive else 'DOWN' }}</b></span>
+  <span class="s {{ '' if db_ready else 'bad' }}">db
+    <b>{{ 'ok' if db_ready else 'DOWN' }}</b></span>
+</div>
+
+<form method="post" action="{{ url_for('admin.set_cadence') }}" class="inline-form"
+      style="margin-bottom:22px">
+  <input type="hidden" name="_csrf" value="{{ csrf }}">
+  <label class="fld" style="margin:0">Sweep interval (global, seconds)</label>
+  <input type="number" name="cadence" min="20" max="900" value="{{ cadence }}">
+  <button class="btn-sm" type="submit">Apply</button>
+</form>
+
+<table class="u-tbl">
+  <thead>
+    <tr><th>Account</th><th>Status</th><th>Access until</th><th>Treks</th><th>Grant</th></tr>
+  </thead>
+  <tbody>
+  {% for u in users %}
+    <tr>
+      <td>
+        <div class="u-em">{{ u.email }}</div>
+        <div class="u-mt">
+          #{{ u.id }}{% if u.name %} · {{ u.name }}{% endif %}
+          · joined {{ u.created_at.strftime('%d %b %Y') }}
+          {%- if u.last_login %} · seen {{ u.last_login.strftime('%d %b') }}{% endif %}
+        </div>
+      </td>
+      <td>
+        <span class="tag {{ 'tag-open' if u.verified else 'tag-unrel' }}">
+          {{ 'verified' if u.verified else 'unverified' }}</span>
+        {% if u.is_admin %}<span class="tag tag-open">admin</span>{% endif %}
+        {% if u.status != 'active' %}<span class="tag tag-sold">{{ u.status }}</span>{% endif %}
+      </td>
+      <td>
+        {% if u.is_admin %}<span class="u-mt">always</span>
+        {% elif u.access_until %}{{ u.access_until.strftime('%d %b %Y') }}
+        {% else %}<span class="u-mt">—</span>{% endif %}
+      </td>
+      <td>{{ u.favourites }}</td>
+      <td>
+        {% if not u.is_admin %}
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <form method="post" action="{{ url_for('admin.grant') }}" class="inline-form">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <input type="hidden" name="user_id" value="{{ u.id }}">
+            <input type="number" name="days" value="{{ access_days }}" min="1" max="400">
+            <input type="text" name="note" placeholder="note">
+            <button class="btn-sm" type="submit">Grant</button>
+          </form>
+          {% if u.access_until %}
+          <form method="post" action="{{ url_for('admin.revoke') }}">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <input type="hidden" name="user_id" value="{{ u.id }}">
+            <button class="btn-sm btn-danger" type="submit">Revoke</button>
+          </form>
+          {% endif %}
+        </div>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<div class="alt"><a href="/">Back to the board</a></div>
+{% endblock %}

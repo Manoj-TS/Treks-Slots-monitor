@@ -1,0 +1,26 @@
+{% extends "auth/base.html" %}
+{% block title %}Get access · Aranya{% endblock %}
+{% block content %}
+<h2>Get access</h2>
+<div class="lead">
+  Your account is ready{% if user %}, {{ user.email }}{% endif %} — it just needs
+  access enabled.
+</div>
+
+<div class="lrow" style="margin-bottom:14px">
+  <div>
+    <span class="nm">₹99</span>
+    <div class="mt">30 days · one-time · no auto-renew, no card stored</div>
+  </div>
+</div>
+
+<div class="lead" style="margin-bottom:0">
+  Online payment isn't switched on yet. To get access now, message
+  <a href="mailto:{{ support_email }}" style="color:var(--accent)">{{ support_email }}</a>
+  and it'll be enabled on your account straight away.
+</div>
+
+<div class="alt">
+  <a href="{{ url_for('auth.account') }}">Back to your account</a>
+</div>
+{% endblock %}

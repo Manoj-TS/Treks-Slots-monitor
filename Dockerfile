@@ -42,9 +42,11 @@ WORKDIR /data
 
 EXPOSE 5020
 
-# /api/meta, not / — the latter returns ~50KB of inline HTML on every probe.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD ["python","-c","import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5020/api/meta',timeout=4).status==200 else 1)"]
+# /healthz, NOT /api/meta: that route is behind the paywall now, so probing it
+# would return 402, mark the container unhealthy, and cause a restart loop
+# under `restart: unless-stopped`.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD ["python","-c","import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5020/healthz',timeout=4).status==200 else 1)"]
 
 # waitress, deliberately — NOT gunicorn.
 #   start_background() runs at import and spawns the portal-sweep threads. Gunicorn

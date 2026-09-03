@@ -13,10 +13,10 @@ def start_background():
     if _started:
         return
     _started = True
-    # Connect + migrate before loading. A database failure is logged and
-    # degrades to the JSON files rather than preventing startup — the board is
-    # public data and must keep serving.
+    # A database failure here is logged, not fatal: the sweeper retries the
+    # connection and reloads views on its own cycle, so a Postgres blip during
+    # a deploy doesn't stop the process from coming up.
     storage.init_storage()
-    storage.load_all(config.OWNER_USER_ID)
+    storage.reload_views()
     threading.Thread(target=discovery.discovery_loop, daemon=True).start()
     threading.Thread(target=sweeper.supervised_worker, daemon=True).start()

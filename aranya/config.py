@@ -8,6 +8,18 @@ BOARD_CYCLE_DEFAULT = 40           # seconds between sweeps (display, not a race
 WINDOW_DAYS_DEFAULT = 30           # portal opens bookings up to 30 days ahead
 SESSION_RESET_AFTER = 4
 
+# ── Portal load control ───────────────────────────────────────────────────── #
+# The sweep is a union across paying users, so without a ceiling the request
+# rate against a .gov.in host would grow with the customer base. This keeps it
+# a constant: more customers make a full sweep take longer, not hit harder.
+SWEEP_RPS = float(os.environ.get("SWEEP_RPS", "3.0"))
+MAX_TARGETS = int(os.environ.get("MAX_TARGETS", "1500"))
+VIEW_RELOAD_SECONDS = int(os.environ.get("VIEW_RELOAD_SECONDS", "60"))
+
+# Per-user ceilings, enforced at write time.
+MAX_FAVOURITES_PER_USER = int(os.environ.get("MAX_FAVOURITES_PER_USER", "25"))
+MAX_WATCH_PER_USER = int(os.environ.get("MAX_WATCH_PER_USER", "50"))
+
 FAVOURITES_FILE = "favourites.json"
 WATCHLIST_FILE = "watchlist.json"
 TREKS_FILE = "trek_configs.json"
@@ -42,6 +54,13 @@ CSRF_COOKIE = "av_csrf"
 SESSION_DAYS = 30
 VERIFY_TOKEN_HOURS = 24
 RESET_TOKEN_MINUTES = 60
+
+# Force an SSE reconnect (and therefore a fresh paywall check) at least this
+# often. Kept under nginx's proxy_read_timeout of 3600s.
+MAX_STREAM_SECONDS = int(os.environ.get("MAX_STREAM_SECONDS", "3300"))
+
+ACCESS_DAYS = int(os.environ.get("ACCESS_DAYS", "30"))
+PRICE_RUPEES = int(os.environ.get("PRICE_RUPEES", "99"))
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")

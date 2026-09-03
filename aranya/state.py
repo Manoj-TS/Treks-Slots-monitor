@@ -11,12 +11,16 @@ import threading
 from . import config
 
 registry = {"treks": [], "ready": False, "error": None}
-trek_configs = {}
-favourites = []          # [{trek_id, name, district_id, district_name}]
-custom_watch = []        # [{trek_id, name, district_id, district_name, date}]
-board_state = {}         # "{trek_id}_{YYYY-MM-DD}" -> cell dict
-settings = {"window_days": config.WINDOW_DAYS_DEFAULT, "cadence": config.BOARD_CYCLE_DEFAULT}
-stats = {"cycle": 0, "last_update": None, "error": None, "worker_alive": False}
+trek_configs = {}        # global operator catalog, not per-user
+# "{trek_id}_{YYYY-MM-DD}" -> cell dict. Deliberately global and shared: a cell
+# is a fact about the world, identical for every user, so one sweep serves all.
+board_state = {}
+# Only genuinely global settings live here. window_days is per-user (see
+# views.UserView); cadence is global and admin-only, because one user must not
+# be able to set the poll rate against the government portal for everyone.
+settings = {"cadence": config.BOARD_CYCLE_DEFAULT}
+stats = {"cycle": 0, "last_update": None, "error": None, "worker_alive": False,
+         "targets": 0, "skipped": 0}
 
 lock = threading.Lock()
 state_changed = threading.Event()
