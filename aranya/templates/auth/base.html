@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{% block title %}Aranya{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ asset_version }}">
+<style>
+  .auth-wrap{max-width:420px;margin:8vh auto 40px;padding:0 20px}
+  .auth-brand{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:22px}
+  .auth-brand .logo{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+    font-size:1.1rem;background:linear-gradient(140deg,var(--accent),var(--accent-2))}
+  .auth-brand h1{font-size:1.06rem;font-weight:600;color:var(--text-bright)}
+  .auth-brand .sub{font-size:.66rem;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase}
+  .auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px}
+  .auth-card h2{font-size:1.05rem;font-weight:600;color:var(--text-bright);margin-bottom:4px}
+  .auth-card .lead{font-size:.82rem;color:var(--text-dim);margin-bottom:18px;line-height:1.5}
+  .fieldrow{margin-bottom:14px}
+  .auth-card .btn{width:100%;padding:11px;font-size:.9rem;margin-top:4px}
+  .alt{margin-top:16px;font-size:.8rem;color:var(--text-dim);text-align:center;line-height:1.7}
+  .alt a{color:var(--accent);text-decoration:none}
+  .alt a:hover{text-decoration:underline}
+  .flash{padding:10px 12px;border-radius:8px;font-size:.82rem;margin-bottom:14px;line-height:1.5}
+  .flash.error{background:color-mix(in srgb,var(--danger) 14%,transparent);
+    color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 35%,transparent)}
+  .flash.ok{background:color-mix(in srgb,var(--green) 14%,transparent);
+    color:var(--green);border:1px solid color-mix(in srgb,var(--green) 35%,transparent)}
+  .auth-foot{margin-top:26px;font-size:.7rem;color:var(--text-dim);text-align:center;line-height:1.6}
+  .auth-foot a{color:var(--text-dim);text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="auth-wrap">
+  <a class="auth-brand" href="/" style="text-decoration:none">
+    <div class="logo">&#9968;</div>
+    <div><h1>Aranya</h1><div class="sub">Unofficial slot board</div></div>
+  </a>
+
+  <div class="auth-card">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash {{ 'error' if category == 'error' else 'ok' }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+
+  <div class="auth-foot">
+    Unofficial. Not affiliated with or endorsed by the Karnataka Forest Department.<br>
+    Bookings are made on
+    <a href="https://aranyavihaara.karnataka.gov.in" rel="noopener noreferrer" target="_blank">the official portal</a>.
+  </div>
+</div>
+</body>
+</html>

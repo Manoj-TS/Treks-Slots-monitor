@@ -15,7 +15,9 @@ bp = Blueprint("main", __name__)
 
 @bp.route("/")
 def index():
-    return render_template("dashboard.html", asset_version=config.ASSET_VERSION)
+    from . import security
+    return render_template("dashboard.html", asset_version=config.ASSET_VERSION,
+                           csrf=security.csrf_token())
 
 
 @bp.route("/api/meta")

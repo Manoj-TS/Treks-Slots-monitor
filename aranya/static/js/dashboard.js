@@ -1,5 +1,20 @@
 /* ---------- utils ---------- */
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c];});}
+
+/* CSRF: prefer the av_csrf cookie (set at login, so it stays correct if you
+   sign in from another tab) and fall back to the token baked into the page. */
+function csrfToken(){
+  var m=document.cookie.match(/(?:^|;\s*)av_csrf=([^;]+)/);
+  if(m)return decodeURIComponent(m[1]);
+  var el=document.querySelector('meta[name="csrf-token"]');
+  return el?el.getAttribute('content'):'';
+}
+function sendJSON(url,method,body){
+  return fetch(url,{method:method,headers:{'Content-Type':'application/json',
+    'X-CSRF-Token':csrfToken()},body:JSON.stringify(body||{})});
+}
+function postJSON(url,body){return sendJSON(url,'POST',body);}
+function deleteJSON(url,body){return sendJSON(url,'DELETE',body);}
 function timeAgo(iso){if(!iso)return'never';var s=Math.round((Date.now()-new Date(iso).getTime())/1000);return s<5?'just now':s<60?(s+'s ago'):s<3600?(Math.floor(s/60)+'m ago'):(Math.floor(s/3600)+'h ago');}
 function fmtDate(iso){var d=new Date(iso+'T00:00:00');return d.toLocaleDateString('en-US',{day:'numeric',month:'short'});}
 function todayIso(){return new Date().toISOString().slice(0,10);}
@@ -205,14 +220,14 @@ function renderFavourites(){
   });
 }
 function addFav(){var v=document.getElementById('favSel').value;if(!v)return;
-  fetch('/api/favourites',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trek_id:+v})})
+  postJSON('/api/favourites',{trek_id:+v})
   .then(function(r){return r.json();}).then(function(d){if(d.error){document.getElementById('favMsg').textContent=d.error;return;}setTimeout(renderFavourites,300);});}
-function delFav(id){fetch('/api/favourites',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({trek_id:id})}).then(function(){setTimeout(renderFavourites,300);});}
+function delFav(id){deleteJSON('/api/favourites',{trek_id:id}).then(function(){setTimeout(renderFavourites,300);});}
 function moveFav(id,dir){
   var ids=(latest.favourites||[]).map(function(f){return f.trek_id;});
   var i=ids.indexOf(id),j=i+dir;if(i<0||j<0||j>=ids.length)return;
   ids.splice(j,0,ids.splice(i,1)[0]);
-  fetch('/api/favourites/reorder',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order:ids})}).then(function(){setTimeout(renderFavourites,250);});
+  postJSON('/api/favourites/reorder',{order:ids}).then(function(){setTimeout(renderFavourites,250);});
 }
 
 /* ---------- pinned (stick a trek+date) ---------- */
@@ -231,8 +246,7 @@ function pinnedStripHtml(){
   return '<div class="pinned-strip"><span class="ps-lbl">📌 Pinned</span>'+chips+'</div>';
 }
 function togglePin(tid,iso,isPinned){
-  fetch('/api/watch',{method:isPinned?'DELETE':'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({trek_id:tid,date:iso})})
+  sendJSON('/api/watch',isPinned?'DELETE':'POST',{trek_id:tid,date:iso})
     .then(function(){setTimeout(function(){if(activeTab==='calendar')renderCalendar();else renderBoard();},300);});
 }
 
@@ -326,14 +340,14 @@ function setFont(f){prefs.font=f;savePrefs();applyTheme();renderSettings();}
 function setFontScale(s){prefs.fontScale=s;savePrefs();applyTheme();renderSettings();}
 function saveServerSettings(){
   var win=+document.getElementById('setWin').value,cad=+document.getElementById('setCad').value;
-  fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({window_days:win,cadence:cad})})
+  postJSON('/api/settings',{window_days:win,cadence:cad})
   .then(function(r){return r.json();}).then(function(){document.getElementById('setMsg').textContent='Saved. Board updates on the next sweep.';});
 }
 
 /* ---------- window segmented control ---------- */
 document.getElementById('winSeg').addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;
-  fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({window_days:+b.dataset.d})});
+  postJSON('/api/settings',{window_days:+b.dataset.d});
 });
 
 /* ---------- live link ---------- */

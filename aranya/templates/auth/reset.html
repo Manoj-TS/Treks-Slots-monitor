@@ -1,0 +1,25 @@
+{% extends "auth/base.html" %}
+{% block title %}Set a new password · Aranya{% endblock %}
+{% block content %}
+{% if expired %}
+  <h2>Link expired</h2>
+  <div class="lead">
+    That reset link is invalid, expired, or has already been used.
+    Reset links work once and last 60 minutes.
+  </div>
+  <div class="alt"><a href="{{ url_for('auth.forgot') }}">Request a new one</a></div>
+{% else %}
+  <h2>Set a new password</h2>
+  <div class="lead">This signs you out of every other device.</div>
+  <form method="post" action="{{ url_for('auth.reset') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <input type="hidden" name="token" value="{{ token }}">
+    <div class="fieldrow">
+      <label class="fld" for="password">New password</label>
+      <input type="password" id="password" name="password"
+             autocomplete="new-password" minlength="8" required autofocus>
+    </div>
+    <button class="btn" type="submit">Update password</button>
+  </form>
+{% endif %}
+{% endblock %}

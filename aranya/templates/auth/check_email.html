@@ -1,0 +1,14 @@
+{% extends "auth/base.html" %}
+{% block title %}Check your email · Aranya{% endblock %}
+{% block content %}
+<h2>{% if expired %}Link expired{% else %}Check your email{% endif %}</h2>
+<div class="lead">
+  {% if expired %}
+    That confirmation link is no longer valid. Sign in and we'll send a fresh one.
+  {% else %}
+    If that address needs confirming, we've sent it a link. It expires in 24 hours.
+    Check your spam folder if it hasn't arrived in a few minutes.
+  {% endif %}
+</div>
+<div class="alt"><a href="{{ url_for('auth.login') }}">Back to sign in</a></div>
+{% endblock %}

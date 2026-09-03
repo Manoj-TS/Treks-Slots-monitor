@@ -1,0 +1,32 @@
+{% extends "auth/base.html" %}
+{% block title %}Your account · Aranya{% endblock %}
+{% block content %}
+<h2>Your account</h2>
+<div class="lead">{{ user.email }}</div>
+
+<div class="lrow" style="margin-bottom:8px">
+  <div><span class="nm">Email</span><div class="mt">{{ user.email }}</div></div>
+  <span class="tag {{ 'tag-open' if user.email_verified else 'tag-unrel' }}">
+    {{ 'confirmed' if user.email_verified else 'unconfirmed' }}</span>
+</div>
+
+<div class="lrow" style="margin-bottom:8px">
+  <div>
+    <span class="nm">Access</span>
+    <div class="mt">
+      {% if user.is_admin %}Administrator
+      {% elif user.access_until %}Until {{ user.access_until.strftime('%d %b %Y') }}
+      {% else %}No active subscription{% endif %}
+    </div>
+  </div>
+  <span class="tag {{ 'tag-open' if user.has_access else 'tag-sold' }}">
+    {{ 'active' if user.has_access else 'inactive' }}</span>
+</div>
+
+<form method="post" action="{{ url_for('auth.logout') }}" style="margin-top:18px">
+  <input type="hidden" name="_csrf" value="{{ csrf }}">
+  <button class="btn" type="submit">Sign out</button>
+</form>
+
+<div class="alt"><a href="{{ url_for('auth.forgot') }}">Change your password</a></div>
+{% endblock %}
