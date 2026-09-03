@@ -21,8 +21,12 @@ RUN useradd --system --uid 10001 --create-home --home-dir /home/app app
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Code last — a code-only change rebuilds in ~2s.
+# Code last — a code-only change rebuilds in ~2s. Flask resolves templates/ and
+# static/ relative to this module's location (not the CWD), so they work correctly
+# even though the app runs with WORKDIR=/data below.
 COPY monitor.py /app/monitor.py
+COPY templates/ /app/templates/
+COPY static/ /app/static/
 
 RUN mkdir -p /data && chown -R 10001:10001 /data /app
 

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aranya</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ asset_version }}">
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">
+    <div class="logo">&#9968;</div>
+    <div><h1>Aranya</h1><div class="sub">Unofficial slot board</div></div>
+  </div>
+  <div class="hgroup">
+    <div class="window-pill">
+      <span class="mono rng" id="rangeTxt">—</span>
+      <span class="seg" id="winSeg">
+        <button data-d="7">7d</button><button data-d="14">14d</button><button data-d="30" class="on">30d</button>
+      </span>
+    </div>
+    <div class="status">
+      <span class="dot" id="dot"></span><span id="statusTxt">Connecting…</span>
+      <span class="flash" id="flash"></span>
+      <span class="mono" style="color:var(--text-dim)" id="updTxt">—</span>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="board" onclick="switchTab('board')">Weekends</button>
+  <button class="tab-btn" data-tab="calendar" onclick="switchTab('calendar')">Calendar</button>
+  <button class="tab-btn" data-tab="favourites" onclick="switchTab('favourites')">Favourites</button>
+  <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">Settings</button>
+</div>
+
+<div class="wrap">
+  <div class="tab-sec" id="tab-board"><div class="empty">Loading board…</div></div>
+  <div class="tab-sec" id="tab-calendar" style="display:none"></div>
+  <div class="tab-sec" id="tab-favourites" style="display:none"></div>
+  <div class="tab-sec" id="tab-settings" style="display:none"></div>
+  <div class="disclaimer">
+    Unofficial. Not affiliated with or endorsed by the Karnataka Forest Department.
+    Availability is read live from the official portal at
+    <a href="https://aranyavihaara.karnataka.gov.in" rel="noopener noreferrer" target="_blank">aranyavihaara.karnataka.gov.in</a>
+    — all bookings must be made there.
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ asset_version }}"></script>
+</body>
+</html>
