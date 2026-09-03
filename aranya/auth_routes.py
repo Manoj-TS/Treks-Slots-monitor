@@ -7,7 +7,7 @@ from datetime import timedelta
 from flask import (Blueprint, flash, g, redirect, render_template, request,
                    session, url_for)
 
-from . import accounts, config, mail, security, storage
+from . import accounts, config, mail, oauth, security, storage
 
 bp = Blueprint("auth", __name__)
 
@@ -232,6 +232,52 @@ def reset():
 
     flash("Password updated. You're signed in.", "ok")
     return _start_session(user, redirect(url_for("main.index")))
+
+
+# ── Google sign-in ────────────────────────────────────────────────────────── #
+
+@bp.route("/auth/google")
+def google_start():
+    if down := _require_db():
+        return down
+    if not oauth.enabled():
+        flash("Google sign-in isn't configured.", "error")
+        return redirect(url_for("auth.login"))
+    # Remember where to land afterwards; only internal paths.
+    nxt = request.args.get("next") or ""
+    session["oauth_next"] = nxt if nxt.startswith("/") and not nxt.startswith("//") else ""
+    redirect_uri = _abs_url(url_for("auth.google_callback"))
+    return oauth.client().authorize_redirect(redirect_uri)
+
+
+@bp.route("/auth/google/callback")
+def google_callback():
+    if down := _require_db():
+        return down
+    if not oauth.enabled():
+        return redirect(url_for("auth.login"))
+
+    try:
+        # Verifies state, exchanges the code, and validates the ID token's
+        # signature and claims. Raises on anything suspicious.
+        token = oauth.client().authorize_access_token()
+    except Exception as e:
+        print(f"[Auth] google callback failed: {e.__class__.__name__}: {e}")
+        flash("Google sign-in failed or was cancelled. Please try again.", "error")
+        return redirect(url_for("auth.login"))
+
+    claims = token.get("userinfo") or {}
+    user, err = oauth.upsert_from_claims(claims)
+    if err:
+        flash(err, "error")
+        return redirect(url_for("auth.login"))
+
+    if user.status != "active":
+        flash("That account has been disabled. Contact support.", "error")
+        return redirect(url_for("auth.login"))
+
+    target = session.pop("oauth_next", "") or url_for("main.index")
+    return _start_session(user, redirect(target))
 
 
 # ── Account ───────────────────────────────────────────────────────────────── #

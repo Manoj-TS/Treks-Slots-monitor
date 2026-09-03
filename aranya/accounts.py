@@ -106,6 +106,13 @@ def set_password(user_id: int, password: str) -> None:
                      (generate_password_hash(password), user_id))
 
 
+def clear_password(user_id: int) -> None:
+    """Drop a password so only OAuth (or a reset, which proves mailbox control)
+    can sign in. Used against account pre-hijacking — see oauth.py."""
+    with db.connection() as conn:
+        conn.execute("UPDATE users SET password_hash = NULL WHERE id = %s", (user_id,))
+
+
 def mark_verified(user_id: int) -> None:
     with db.connection() as conn:
         conn.execute("UPDATE users SET email_verified = true WHERE id = %s", (user_id,))

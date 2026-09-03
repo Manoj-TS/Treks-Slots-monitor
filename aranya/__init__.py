@@ -31,11 +31,17 @@ def create_app():
         security.load_session()
         return security.check_csrf()
 
+    from . import oauth
+    google_ready = oauth.init_app(app)
+    if not google_ready:
+        print("[Config] Google sign-in not configured (no GOOGLE_CLIENT_ID/SECRET).")
+
     @app.context_processor
     def _inject():
         # Available to every template without threading it through each render.
         return {"user": getattr(g, "user", None),
-                "asset_version": config.ASSET_VERSION}
+                "asset_version": config.ASSET_VERSION,
+                "google_enabled": oauth.enabled()}
 
     from . import routes
     app.register_blueprint(routes.bp)

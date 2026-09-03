@@ -9,3 +9,8 @@ waitress==3.0.2
 # Postgres. No ORM: a handful of tables and hand-written queries.
 psycopg[binary]>=3.2
 psycopg-pool>=3.2
+
+# Google sign-in. Authlib handles state/nonce/PKCE, JWKS fetch and rotation,
+# and ID-token signature + claims validation — the parts of OIDC that are
+# genuinely easy to get subtly and dangerously wrong.
+authlib>=1.3

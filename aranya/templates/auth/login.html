@@ -4,6 +4,8 @@
 <h2>Sign in</h2>
 <div class="lead">Your board of trek availability across the next 30 days.</div>
 
+{% with next_path = next %}{% include "auth/_google.html" %}{% endwith %}
+
 <form method="post" action="{{ url_for('auth.login') }}">
   <input type="hidden" name="_csrf" value="{{ csrf }}">
   <input type="hidden" name="next" value="{{ next or '' }}">

@@ -4,6 +4,8 @@
 <h2>Create an account</h2>
 <div class="lead">We'll email you a link to confirm your address.</div>
 
+{% with next_path = '' %}{% include "auth/_google.html" %}{% endwith %}
+
 <form method="post" action="{{ url_for('auth.signup') }}">
   <input type="hidden" name="_csrf" value="{{ csrf }}">
   <div class="fieldrow">

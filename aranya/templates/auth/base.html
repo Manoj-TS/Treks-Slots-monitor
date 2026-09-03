@@ -31,6 +31,15 @@
     color:var(--green);border:1px solid color-mix(in srgb,var(--green) 35%,transparent)}
   .auth-foot{margin-top:26px;font-size:.7rem;color:var(--text-dim);text-align:center;line-height:1.6}
   .auth-foot a{color:var(--text-dim);text-decoration:underline}
+  .oauth-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    padding:11px;border:1px solid var(--border-hi);border-radius:8px;background:var(--surface2);
+    color:var(--text-bright);font:inherit;font-size:.9rem;font-weight:500;cursor:pointer;
+    text-decoration:none;transition:border-color .15s}
+  .oauth-btn:hover{border-color:var(--accent)}
+  .oauth-btn svg{width:18px;height:18px;flex:none}
+  .divider{display:flex;align-items:center;gap:12px;margin:18px 0;
+    font-size:.72rem;color:var(--text-dim)}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--border)}
 </style>
 </head>
 <body>

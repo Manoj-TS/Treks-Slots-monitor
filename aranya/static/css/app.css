@@ -67,7 +67,8 @@ a{color:inherit}
 .ptitle{font-size:1rem;font-weight:600;color:var(--text-bright);margin-bottom:4px}
 .psub{font-size:.78rem;color:var(--text-dim);margin-bottom:14px}
 label.fld{display:block;font-size:.74rem;font-weight:500;color:var(--text-dim);margin-bottom:5px;letter-spacing:.01em}
-select,input[type=text],input[type=date],input[type=number]{width:100%;background:var(--bg);color:var(--text-bright);border:1px solid var(--border-hi);padding:9px;border-radius:8px;font:inherit;font-size:.86rem;outline:none}
+select,input[type=text],input[type=date],input[type=number],
+input[type=email],input[type=password],input[type=search],input[type=tel]{width:100%;background:var(--bg);color:var(--text-bright);border:1px solid var(--border-hi);padding:9px;border-radius:8px;font:inherit;font-size:.86rem;outline:none}
 select:focus,input:focus{border-color:var(--accent)}
 input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:pointer}
 .btn{background:var(--accent);color:#fff;border:none;padding:9px 15px;border-radius:8px;font:inherit;font-weight:500;cursor:pointer}
