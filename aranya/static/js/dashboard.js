@@ -327,11 +327,17 @@ function renderSettings(){
     +'<div><label class="fld">Group</label><select onchange="onPref(\'group\',this.value)">'+optHtml(prefs.group,[['none','No grouping'],['district','By district']])+'</select></div>'
     +'<div><label class="fld">Row density</label><select onchange="onPref(\'density\',this.value)">'+optHtml(prefs.density,[['comfortable','Comfortable'],['compact','Compact']])+'</select></div>'
     +'</div></div>'
-    +'<div class="card"><div class="ptitle">Data</div><div class="psub">Applies to everyone viewing this dashboard.</div>'
+    +'<div class="card"><div class="ptitle">Your board</div><div class="psub">Saved to your account, so it follows you to any device.</div>'
     +'<div class="row"><div><label class="fld">Window (days ahead)</label><input type="number" id="setWin" min="1" max="60" value="'+latest.window_days+'"></div>'
-    +'<div><label class="fld">Sweep interval (seconds)</label><input type="number" id="setCad" min="5" max="600" value="'+(latest.cadence||40)+'"></div>'
-    +'<div style="flex:0"><button class="btn" onclick="saveServerSettings()">Apply</button></div></div>'
-    +'<div class="msg" id="setMsg" style="color:var(--green)"></div></div>';
+    +'<div style="flex:0;align-self:flex-end"><button class="btn" onclick="saveServerSettings()">Apply</button></div></div>'
+    +'<div class="msg" id="setMsg" style="color:var(--green)"></div>'
+    /* Refresh rate is shown but not editable here: it is one global setting for
+       everyone, kept deliberately gentle on the government portal, so it is not
+       something an individual account gets to turn up. */
+    +'<div class="psub" style="margin:16px 0 0;padding-top:14px;border-top:1px solid var(--border)">'
+      +'Availability refreshes about every <b>'+(latest.cadence||40)+'s</b> for everyone. '
+      +'That rate is set centrally to stay light on the forest department portal.</div>'
+    +'</div>';
 }
 function setTheme(t){prefs.theme=t;savePrefs();applyTheme();renderSettings();}
 function setAccent(a){prefs.accent=a;savePrefs();applyTheme();renderSettings();}
@@ -339,9 +345,13 @@ function setLight(v){prefs.light=v;savePrefs();applyTheme();renderSettings();}
 function setFont(f){prefs.font=f;savePrefs();applyTheme();renderSettings();}
 function setFontScale(s){prefs.fontScale=s;savePrefs();applyTheme();renderSettings();}
 function saveServerSettings(){
-  var win=+document.getElementById('setWin').value,cad=+document.getElementById('setCad').value;
-  postJSON('/api/settings',{window_days:win,cadence:cad})
-  .then(function(r){return r.json();}).then(function(){document.getElementById('setMsg').textContent='Saved. Board updates on the next sweep.';});
+  var win=+document.getElementById('setWin').value;
+  postJSON('/api/settings',{window_days:win})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d && d.error){document.getElementById('setMsg').textContent=d.error;return;}
+    document.getElementById('setMsg').textContent='Saved. Your board updates on the next sweep.';
+  });
 }
 
 /* ---------- window segmented control ---------- */
