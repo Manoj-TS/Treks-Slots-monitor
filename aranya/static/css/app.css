@@ -182,7 +182,10 @@ td.cell.is-open{background:color-mix(in srgb,var(--green) 7%,transparent)}
 .cal-hint{font-size:.74rem;color:var(--text-dim);margin-top:12px}
 
 /* ---------- signed-in user menu (shared by the board and admin) ---------- */
-.umenu{position:relative}
+.umenu{position:relative;z-index:1}
+/* Lift the trigger above its siblings only while open, so the panel can never
+   be painted over by an adjacent control. */
+.umenu[open]{z-index:120}
 .umenu>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;
   padding:6px 10px;border:1px solid var(--border);border-radius:9px;
   background:var(--surface);font-size:.8rem;color:var(--text)}
@@ -193,9 +196,12 @@ td.cell.is-open{background:color-mix(in srgb,var(--green) 7%,transparent)}
   background:linear-gradient(140deg,var(--accent),var(--accent-2));color:#fff;
   font-size:.7rem;font-weight:600;flex:none;text-transform:uppercase}
 .umenu .who{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.umenu-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:80;min-width:206px;
+.umenu-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:120;min-width:206px;
   background:var(--surface);border:1px solid var(--border-hi);border-radius:11px;
-  box-shadow:0 12px 34px rgba(0,0,0,.4);padding:6px;overflow:hidden}
+  box-shadow:0 12px 34px rgba(0,0,0,.45);padding:6px;
+  /* Never run past the viewport edge on a narrow screen, and stay scrollable
+     if the list ever outgrows the space. */
+  max-width:calc(100vw - 24px);max-height:min(70vh,420px);overflow-y:auto}
 .umenu-panel .hdr{padding:9px 11px 10px;border-bottom:1px solid var(--border);margin-bottom:6px}
 .umenu-panel .hdr .em{font-size:.8rem;color:var(--text-bright);font-weight:500;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -254,7 +260,13 @@ td.cell.is-open{background:color-mix(in srgb,var(--green) 7%,transparent)}
   .header{padding:12px 16px}
   .wrap{padding:0 14px}
   .tabs{top:0}
-  .header{position:static}
+  /* Not `static`: the header uses backdrop-filter, which creates a stacking
+     context, so everything inside it (including the account dropdown) is
+     trapped at the header's own level. A static element ignores z-index, which
+     dropped that whole context below the sticky tab bar (z-index 55) and made
+     the tabs paint over the open menu. `relative` un-sticks it for mobile while
+     still letting it sit above the tabs. */
+  .header{position:relative;z-index:70}
 }
 @media(max-width:600px){
   .header{padding:11px 14px;gap:10px}
