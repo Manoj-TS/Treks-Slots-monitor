@@ -1,0 +1,25 @@
+.git
+.gitignore
+.gitattributes
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# Runtime state and secrets must never enter an image layer.
+data/
+certbot/
+.env
+*.json
+
+# Deployment scaffolding — used by compose, not baked into the app image.
+docker-compose.yml
+Dockerfile
+.dockerignore
+nginx/
+start.sh
+deploy/
+
+# Docs and stray assets.
+*.md
+Seal_of_Karnataka.png
