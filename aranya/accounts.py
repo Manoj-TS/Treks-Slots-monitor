@@ -123,17 +123,21 @@ def touch_login(user_id: int) -> None:
         conn.execute("UPDATE users SET last_login_at = now() WHERE id = %s", (user_id,))
 
 
-def grant_access(user_id: int, days: int) -> datetime | None:
-    """Extend paid access. Stacks onto unexpired access rather than resetting
-    it, so paying early never costs the customer days. Capped so a retry loop
-    can't accidentally grant years."""
+def grant_access(user_id: int, days: int, cap_days: int = 365) -> datetime | None:
+    """Extend access. Stacks onto unexpired access rather than resetting it, so
+    paying early never costs the customer days.
+
+    `cap_days` guards the payment path: a webhook retry loop must not be able to
+    grant years. Admin grants pass a larger cap deliberately, because a
+    comped account is a decision someone made, not an accident.
+    """
     with db.connection() as conn:
         r = conn.execute(
             "UPDATE users SET access_until = LEAST("
             "  GREATEST(COALESCE(access_until, now()), now()) + make_interval(days => %s),"
-            "  now() + interval '365 days')"
+            "  now() + make_interval(days => %s))"
             " WHERE id = %s RETURNING access_until",
-            (days, user_id)).fetchone()
+            (days, cap_days, user_id)).fetchone()
     return r[0] if r else None
 
 

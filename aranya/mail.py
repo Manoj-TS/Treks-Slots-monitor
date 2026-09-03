@@ -114,6 +114,36 @@ def send_password_changed(to: str) -> bool:
     )
 
 
+def send_invite(to: str, link: str, days: int) -> bool:
+    """Sent when an operator hands someone access directly, rather than the
+    person signing up themselves."""
+    return send(
+        to,
+        "You have been given access to Aranya",
+        f"You've been given {days} days of access to Aranya — a board showing "
+        f"trek slot availability across the Karnataka forest department portal.\n\n"
+        f"Set a password and sign in here:\n{link}\n\n"
+        f"This link expires in {config.RESET_TOKEN_MINUTES} minutes. If it lapses, use "
+        f"'Forgot your password' at {config.PUBLIC_BASE_URL}/forgot to get a new one.\n\n"
+        f"Aranya is unofficial and not affiliated with the Karnataka Forest "
+        f"Department. It shows availability only — treks are still booked on the "
+        f"official portal.\n\n"
+        f"— Aranya\n",
+    )
+
+
+def send_access_granted(to: str, days: int, until: str) -> bool:
+    """Sent when an existing account is topped up."""
+    return send(
+        to,
+        "Your Aranya access has been extended",
+        f"{days} days of access have been added to your Aranya account.\n\n"
+        f"Your access now runs until {until}.\n\n"
+        f"Open your board: {config.PUBLIC_BASE_URL}/app\n\n"
+        f"— Aranya\n",
+    )
+
+
 def send_account_exists(to: str) -> bool:
     """Sent instead of an error when someone tries to sign up with an address
     that already has an account — avoids leaking which emails are registered."""
