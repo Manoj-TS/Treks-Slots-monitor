@@ -17,16 +17,15 @@ RUN apt-get update \
 
 RUN useradd --system --uid 10001 --create-home --home-dir /home/app app
 
-# Dependencies first so this layer stays cached across every monitor.py edit.
+# Dependencies first so this layer stays cached across every code edit.
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Code last — a code-only change rebuilds in ~2s. Flask resolves templates/ and
-# static/ relative to this module's location (not the CWD), so they work correctly
-# even though the app runs with WORKDIR=/data below.
-COPY monitor.py /app/monitor.py
-COPY templates/ /app/templates/
-COPY static/ /app/static/
+# Code last — a code-only change rebuilds in ~2s. Flask resolves aranya/templates
+# and aranya/static relative to the package's location (not the CWD), so they
+# work correctly even though the app runs with WORKDIR=/data below.
+COPY wsgi.py /app/wsgi.py
+COPY aranya/ /app/aranya/
 
 RUN mkdir -p /data && chown -R 10001:10001 /data /app
 
@@ -35,7 +34,7 @@ USER 10001:10001
 # The app writes favourites/watchlist/trek_configs/dashboard_settings as *relative*
 # paths into the CWD. Running with WORKDIR=/data (a mounted volume) and the code on
 # PYTHONPATH puts state on the volume with zero code changes. Do NOT mount at /app —
-# that would shadow monitor.py.
+# that would shadow the aranya/ package.
 WORKDIR /data
 
 EXPOSE 5020
@@ -58,4 +57,4 @@ CMD ["waitress-serve", \
      "--host=0.0.0.0", "--port=5020", \
      "--threads=200", "--connection-limit=400", "--channel-timeout=300", \
      "--send-bytes=1", \
-     "monitor:app"]
+     "wsgi:app"]

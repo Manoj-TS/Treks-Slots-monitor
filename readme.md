@@ -22,14 +22,15 @@ pip install -r requirements.txt
 
 ---
 
-## Slot Monitor (`monitor.py`)
+## Slot Monitor (`aranya/` package, served via `wsgi.py`)
 
-A self-contained Flask app. On startup it discovers every active trek across the
-configured districts (via the portal's `/get-treks` endpoint) and seeds your
-favourites list from the default treks in `trek_configs.json`.
+A Flask app (`aranya/`, entry point `wsgi.py`). On startup it discovers every
+active trek across the configured districts (via the portal's `/get-treks`
+endpoint) and seeds your favourites list from the default treks in
+`trek_configs.json`.
 
 ```bash
-python monitor.py
+python wsgi.py
 ```
 
 Then open **http://localhost:5020** (override with the `PORT`/`HOST` env vars).
@@ -54,7 +55,7 @@ Then open **http://localhost:5020** (override with the `PORT`/`HOST` env vars).
 
 ### Configuration
 
-Edit the constants at the top of `monitor.py`:
+Edit the constants in `aranya/config.py`:
 
 | Constant              | Purpose                                            |
 | ---------------------- | -------------------------------------------------- |
