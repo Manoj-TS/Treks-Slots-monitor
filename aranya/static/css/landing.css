@@ -8,8 +8,11 @@ body{line-height:1.6}
 .lp-nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);
   background:color-mix(in srgb,var(--bg) 88%,transparent);
   border-bottom:1px solid var(--border)}
+/* Only ever set vertical padding on elements that also carry .lp-wrap —
+   the shorthand would wipe out .lp-wrap's horizontal padding and leave the
+   text flush against the edge of the screen. */
 .lp-nav .inner{display:flex;align-items:center;justify-content:space-between;
-  gap:16px;padding:14px 0}
+  gap:14px;padding-top:14px;padding-bottom:14px;flex-wrap:wrap}
 .lp-brand{display:flex;align-items:center;gap:11px;text-decoration:none}
 .lp-brand .logo{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;
   font-size:1.05rem;background:linear-gradient(140deg,var(--accent),var(--accent-2))}
@@ -29,7 +32,7 @@ body{line-height:1.6}
 .btn-ghost:hover{border-color:var(--accent);color:var(--text-bright)}
 
 /* ── hero ── */
-.hero{padding:76px 0 20px;text-align:center}
+.hero{padding-top:76px;padding-bottom:20px;text-align:center}
 .hero h1{font-size:2.6rem;font-weight:600;color:var(--text-bright);line-height:1.15;
   letter-spacing:-.02em;max-width:16ch;margin:0 auto 18px}
 .hero .sub{font-size:1.05rem;color:var(--text-dim);max-width:56ch;margin:0 auto 12px}
@@ -45,7 +48,7 @@ body{line-height:1.6}
 .unofficial a{color:var(--accent)}
 
 /* ── sections ── */
-.sec{padding:64px 0;border-top:1px solid var(--border)}
+.sec{padding-top:64px;padding-bottom:64px;border-top:1px solid var(--border)}
 .sec h2{font-size:1.55rem;font-weight:600;color:var(--text-bright);
   letter-spacing:-.01em;margin-bottom:10px}
 .sec .lede{color:var(--text-dim);max-width:62ch;margin-bottom:32px}
@@ -153,7 +156,7 @@ body{line-height:1.6}
   font-size:.75rem;line-height:1.7}
 
 /* ── policy pages ── */
-.doc{padding:48px 0 10px}
+.doc{padding-top:48px;padding-bottom:10px}
 .doc h1{font-size:1.8rem;font-weight:600;color:var(--text-bright);margin-bottom:6px}
 .doc .upd{font-size:.78rem;color:var(--text-dim);margin-bottom:32px}
 .doc h2{font-size:1.05rem;font-weight:600;color:var(--text-bright);
@@ -169,9 +172,23 @@ body{line-height:1.6}
 .doc .callout p{margin:0;font-size:.86rem}
 
 @media(max-width:820px){
-  .hero{padding:52px 0 12px}
-  .hero h1{font-size:2rem}
+  .lp-wrap{padding:0 18px}
+  .hero{padding-top:48px;padding-bottom:12px}
+  .hero h1{font-size:1.95rem;max-width:none}
+  .hero .sub{font-size:.96rem}
   .compare,.grid3,.steps,.road{grid-template-columns:1fr}
-  .sec{padding:48px 0}
+  .sec{padding-top:46px;padding-bottom:46px}
+  .sec h2{font-size:1.32rem}
   .lp-nav a.txt{display:none}
+  /* Brand + CTA on one row at 390px only if the CTA gives ground. */
+  .btn-cta,.btn-ghost{padding:9px 13px;font-size:.83rem}
+  .lp-brand .logo{width:29px;height:29px;font-size:.95rem}
+  .lp-brand .nm{font-size:.92rem}
+  .hero .cta-row{flex-direction:column;align-items:stretch}
+  .hero .cta-row a{text-align:center}
+  .unofficial{align-items:flex-start}
+  .price-card{padding:24px 20px}
+  .price-card .amt{font-size:2.5rem}
+  .doc h1{font-size:1.5rem}
+  .lp-foot .cols{gap:18px}
 }
