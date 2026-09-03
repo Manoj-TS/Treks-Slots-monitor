@@ -46,13 +46,12 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
 #   the module and starts ANOTHER sweep loop hammering a government portal. waitress
 #   is structurally one process, so that cannot happen.
 #   --connection-limit must exceed --threads (default is 100 -> 502s at 100 viewers).
-#   --asyncore-use-poll avoids select()'s 1024-fd ceiling with many long-lived SSE conns.
 #   --send-bytes=1 forces a flush per yield so SSE events are not held back.
+# Only flags verified working are listed here. The app doesn't read client IPs for
+# anything (nginx handles rate limiting), so the --trusted-proxy* options are not
+# needed; X-Forwarded-* headers still reach the app as ordinary headers.
 CMD ["waitress-serve", \
      "--host=0.0.0.0", "--port=5020", \
      "--threads=200", "--connection-limit=400", "--channel-timeout=300", \
-     "--asyncore-use-poll", "--send-bytes=1", \
-     "--trusted-proxy=*", \
-     "--trusted-proxy-headers=x-forwarded-for,x-forwarded-proto,x-forwarded-host", \
-     "--clear-untrusted-proxy-headers", \
+     "--send-bytes=1", \
      "monitor:app"]

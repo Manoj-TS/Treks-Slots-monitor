@@ -77,11 +77,13 @@ defaults) on first run.
 
 ## Deploying
 
-Runs in Docker behind nginx with automatic HTTPS (Let's Encrypt), as three
-containers: `app` (waitress-served Flask), `nginx` (reverse proxy + TLS
-termination), `certbot` (renewal loop).
+The app runs in a single Docker container (waitress-served Flask) bound to
+`127.0.0.1:5020`. It expects a **host-level nginx** already serving other sites
+on the box to reverse-proxy to it and terminate TLS, with host `certbot`
+managing the certificate — so it coexists with other projects on a shared VPS
+rather than competing for ports 80/443.
 
-On a fresh Ubuntu VPS, with DNS for your domain already pointed at its IP:
+With DNS for your domain already pointing at the VPS:
 
 ```bash
 git clone https://github.com/Manoj-TS/Treks-Slots-monitor.git aranyavihaara
@@ -90,19 +92,24 @@ cp .env.example .env && nano .env   # set DOMAIN and EMAIL
 sudo ./start.sh
 ```
 
-`start.sh` installs Docker if it's missing, checks DNS before touching Let's
-Encrypt, issues the certificate, and brings the stack up. It's idempotent — to
-ship a code change:
+`start.sh` builds and starts the container, waits until it answers, installs an
+nginx vhost (`nginx/aranyavihaara.org.conf`) plus rate-limit zones, then runs
+`certbot --nginx` the same way the other sites on the box are set up. It's
+idempotent and is also the update command:
 
 ```bash
 git pull && sudo ./start.sh
 ```
 
+It never overwrites the vhost once certbot has edited it, and it verifies at the
+end that SSE actually streams and that state writes are landing.
+
 App state (`favourites.json`, `watchlist.json`, etc.) lives in `./data/` on the
-host, outside git, so it survives every rebuild and a `git pull` never
-conflicts with it. See the comments in `start.sh`, `Dockerfile`, and
-`nginx/site.conf` for the reasoning behind each piece (single-process WSGI
-server, SSE-safe proxy settings, the certbot bootstrap sequence).
+host, outside git, so it survives rebuilds and a `git pull` never conflicts with
+it. See the comments in `start.sh`, `Dockerfile`, and
+`nginx/aranyavihaara.org.conf` for the reasoning behind each piece — notably why
+the WSGI server must stay single-process, and which proxy settings SSE depends
+on.
 
 ---
 

@@ -8,7 +8,6 @@ __pycache__/
 
 # Runtime state and secrets must never enter an image layer.
 data/
-certbot/
 .env
 *.json
 

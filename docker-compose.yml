@@ -1,67 +1,25 @@
 name: aranyavihaara
 
-x-logging: &default-logging
-  driver: json-file
-  options:
-    max-size: "10m"
-    max-file: "3"
-
 services:
   app:
     build: .
     image: aranyavihaara-app:${GIT_SHA:-latest}
     container_name: av-app
     restart: unless-stopped
-    # No `ports:` on purpose. Docker's published-port rules land in the DOCKER
-    # chain, which is traversed BEFORE ufw's — a published 5020 would be
-    # world-reachable even behind `ufw deny 5020`, bypassing HTTPS entirely.
-    # nginx reaches this over the internal network instead.
-    # For local debugging only, use: ports: ["127.0.0.1:5020:5020"]
-    expose:
-      - "5020"
+    # Bound to loopback only: this VPS already runs a host-level nginx serving
+    # several sites, and that nginx reverse-proxies to us. Publishing on
+    # 0.0.0.0 would expose the app directly, bypassing TLS — and Docker's
+    # port rules sit in the DOCKER chain, which ufw does not filter.
+    # Same pattern as the other apps on this box (acube-web, openhouse).
+    ports:
+      - "127.0.0.1:5020:5020"
     volumes:
       - ./data:/data
     environment:
       TZ: Asia/Kolkata
-    networks: [web]
-    logging: *default-logging
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     stop_grace_period: 10s
-
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: av-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./certbot/conf:/etc/letsencrypt:ro
-      - ./certbot/www:/var/www/certbot:ro
-    depends_on:
-      - app
-    networks: [web]
-    logging: *default-logging
-    # Reload every 6h so a renewed certificate is picked up without a restart.
-    # Reload is graceful: in-flight SSE streams survive in the old worker.
-    command: >
-      /bin/sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done &
-                  nginx -g 'daemon off;'"
-
-  certbot:
-    image: certbot/certbot:latest
-    container_name: av-certbot
-    restart: unless-stopped
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    logging: *default-logging
-    # `renew` is a no-op until ~30 days before expiry, so this is cheap and
-    # cannot trip Let's Encrypt rate limits.
-    entrypoint: >
-      /bin/sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet;
-                  sleep 12h & wait $${!}; done"
-
-networks:
-  web:
-    driver: bridge
