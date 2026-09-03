@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{% block title %}Aranya{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ asset_version }}">
+{% block head_extra %}{% endblock %}
+</head>
+<body>
+
+<nav class="app-nav">
+  <div class="inner">
+    <a class="brand" href="{{ '/app' if user and (user.has_access or user.is_admin) else '/' }}">
+      <div class="logo">&#9968;</div>
+      <div><div class="nm">Aranya</div><div class="sb">Unofficial slot board</div></div>
+    </a>
+    <div class="right">
+      {% if user %}
+        <a class="navlink {{ 'on' if active_nav == 'board' }}" href="/app">Board</a>
+        {% if user.is_admin %}
+          <a class="navlink {{ 'on' if active_nav == 'admin' }}"
+             href="{{ url_for('admin.index') }}">Admin</a>
+        {% endif %}
+        {% include "_usermenu.html" %}
+      {% else %}
+        <a class="navlink" href="{{ url_for('auth.login') }}">Sign in</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+<main class="app-main {{ 'narrow' if narrow }}">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="flash {{ 'error' if category == 'error' else 'ok' }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="app-foot">
+  Unofficial. Not affiliated with or endorsed by the Karnataka Forest Department.
+  Availability is read from
+  <a href="https://aranyavihaara.karnataka.gov.in" rel="noopener noreferrer" target="_blank">the official portal</a>,
+  where all bookings must be made. ·
+  <a href="{{ url_for('public.terms') }}">Terms</a> ·
+  <a href="{{ url_for('public.privacy') }}">Privacy</a> ·
+  <a href="{{ url_for('public.contact') }}">Contact</a>
+</footer>
+</body>
+</html>

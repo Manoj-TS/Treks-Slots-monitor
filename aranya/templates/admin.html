@@ -1,29 +1,38 @@
-{% extends "auth/base.html" %}
+{% extends "app_base.html" %}
 {% block title %}Admin · Aranya{% endblock %}
-{% block content %}
+{% block head_extra %}
 <style>
-  /* The auth card is sized for a login form; the user table needs room. */
-  .auth-wrap{max-width:1000px}
-  .u-tbl{width:100%;border-collapse:collapse;margin-top:6px;font-size:.82rem}
+  .u-tbl{width:100%;border-collapse:collapse;font-size:.84rem}
   .u-tbl th{text-align:left;font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;
-    color:var(--text-dim);padding:8px 8px;border-bottom:1px solid var(--border)}
-  .u-tbl td{padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
-  .u-tbl tr:hover td{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+    color:var(--text-dim);font-weight:500;padding:10px 10px;border-bottom:1px solid var(--border)}
+  .u-tbl td{padding:12px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+  .u-tbl tr:last-child td{border-bottom:none}
+  .u-tbl tbody tr:hover td{background:color-mix(in srgb,var(--accent) 5%,transparent)}
   .u-em{color:var(--text-bright);font-weight:500}
-  .u-mt{font-size:.7rem;color:var(--text-dim)}
-  .inline-form{display:flex;gap:6px;align-items:center}
-  .inline-form input[type=number]{width:64px;padding:6px}
-  .inline-form input[type=text]{width:120px;padding:6px}
-  .stat-strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-  .stat-strip .s{padding:6px 11px;background:var(--surface2);border:1px solid var(--border);
-    border-radius:20px;font-size:.76rem;color:var(--text-dim)}
+  .u-mt{font-size:.7rem;color:var(--text-dim);margin-top:2px}
+  .tbl-wrap{border:1px solid var(--border);border-radius:var(--radius);
+    background:var(--surface);overflow-x:auto}
+  .row-acts{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
+  .row-acts input[type=number]{width:62px;padding:6px 8px;font-size:.78rem}
+  .row-acts input[type=text]{width:110px;padding:6px 8px;font-size:.78rem}
+  .row-acts form{display:flex;gap:6px;align-items:center}
+  .stat-strip{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+  .stat-strip .s{padding:7px 12px;background:var(--surface);border:1px solid var(--border);
+    border-radius:20px;font-size:.76rem;color:var(--text-dim);white-space:nowrap}
   .stat-strip .s b{color:var(--text-bright);font-weight:500;font-family:var(--font-mono)}
-  .stat-strip .s.bad{border-color:color-mix(in srgb,var(--danger) 45%,var(--border));color:var(--danger)}
+  .stat-strip .s.bad{border-color:color-mix(in srgb,var(--danger) 45%,var(--border));
+    color:var(--danger)}
+  .stat-strip .s.bad b{color:var(--danger)}
+  .adm-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:22px;
+    align-items:start}
+  @media(max-width:820px){ .adm-grid{grid-template-columns:1fr} }
 </style>
+{% endblock %}
 
-<h2>Operator console</h2>
-<div class="lead">Grant access after taking payment however you like. Every grant is
-  recorded in the payments ledger.</div>
+{% block content %}
+<div class="page-h">Operator console</div>
+<div class="page-sub">Give access after taking payment however you like. Every grant is
+  written to the payments ledger, including free ones.</div>
 
 <div class="stat-strip">
   <span class="s">sweep <b>{{ stats.cycle }}</b></span>
@@ -31,95 +40,127 @@
   <span class="s">sold-out skipped <b>{{ stats.skipped }}</b></span>
   <span class="s {{ '' if stats.worker_alive else 'bad' }}">worker
     <b>{{ 'alive' if stats.worker_alive else 'DOWN' }}</b></span>
-  <span class="s {{ '' if db_ready else 'bad' }}">db
+  <span class="s {{ '' if db_ready else 'bad' }}">database
     <b>{{ 'ok' if db_ready else 'DOWN' }}</b></span>
+  <span class="s">users <b>{{ users | length }}</b></span>
 </div>
 
-<div class="card" style="margin-bottom:22px">
-  <div class="ptitle">Give access to an email</div>
-  <div class="psub">
-    Works for any address. If they already have an account it's topped up; if not,
-    the account is created and they're emailed a link to set a password.
-    Leave it at {{ access_days }} days for a normal paid customer, or set it high
-    (e.g. 3650) to comp someone permanently.
+<div class="adm-grid">
+  <div class="card">
+    <div class="ptitle">Give access to an email</div>
+    <div class="psub">
+      Any address. Already has an account? It's topped up. New address? The account
+      is created and they're emailed a link to set a password.
+      Use {{ access_days }} days for a paying customer, or 3650 to comp someone permanently.
+    </div>
+    <form method="post" action="{{ url_for('admin.invite') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="row" style="margin-bottom:12px">
+        <div style="flex:3;min-width:200px">
+          <label class="fld">Email address</label>
+          <input type="email" name="email" placeholder="organiser@example.com" required>
+        </div>
+        <div style="flex:0;min-width:92px">
+          <label class="fld">Days</label>
+          <input type="number" name="days" value="{{ access_days }}" min="1" max="3650">
+        </div>
+      </div>
+      <div class="row">
+        <div style="flex:2;min-width:160px">
+          <label class="fld">Note (optional)</label>
+          <input type="text" name="note" placeholder="paid by UPI / free trial">
+        </div>
+        <div style="flex:0;align-self:flex-end">
+          <button class="btn" type="submit">Give access</button>
+        </div>
+      </div>
+    </form>
   </div>
-  <form method="post" action="{{ url_for('admin.invite') }}" class="row">
-    <input type="hidden" name="_csrf" value="{{ csrf }}">
-    <div style="flex:3">
-      <label class="fld">Email address</label>
-      <input type="email" name="email" placeholder="organiser@example.com" required>
+
+  <div class="card">
+    <div class="ptitle">Sweep interval</div>
+    <div class="psub">
+      Global, in seconds. Higher is gentler on the government portal. This is not a
+      per-user setting for exactly that reason.
     </div>
-    <div style="flex:0;min-width:96px">
-      <label class="fld">Days</label>
-      <input type="number" name="days" value="{{ access_days }}" min="1" max="3650">
-    </div>
-    <div style="flex:1;min-width:130px">
-      <label class="fld">Note (optional)</label>
-      <input type="text" name="note" placeholder="paid by UPI / free trial">
-    </div>
-    <div style="flex:0"><button class="btn" type="submit">Give access</button></div>
-  </form>
+    <form method="post" action="{{ url_for('admin.set_cadence') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <div class="row">
+        <div style="flex:1">
+          <label class="fld">Seconds between sweeps</label>
+          <input type="number" name="cadence" min="20" max="900" value="{{ cadence }}">
+        </div>
+        <div style="flex:0;align-self:flex-end">
+          <button class="btn-sm" type="submit">Apply</button>
+        </div>
+      </div>
+    </form>
+  </div>
 </div>
 
-<form method="post" action="{{ url_for('admin.set_cadence') }}" class="inline-form"
-      style="margin-bottom:22px">
-  <input type="hidden" name="_csrf" value="{{ csrf }}">
-  <label class="fld" style="margin:0">Sweep interval (global, seconds)</label>
-  <input type="number" name="cadence" min="20" max="900" value="{{ cadence }}">
-  <button class="btn-sm" type="submit">Apply</button>
-</form>
-
-<table class="u-tbl">
-  <thead>
-    <tr><th>Account</th><th>Status</th><th>Access until</th><th>Treks</th><th>Grant</th></tr>
-  </thead>
-  <tbody>
-  {% for u in users %}
-    <tr>
-      <td>
-        <div class="u-em">{{ u.email }}</div>
-        <div class="u-mt">
-          #{{ u.id }}{% if u.name %} · {{ u.name }}{% endif %}
-          · joined {{ u.created_at.strftime('%d %b %Y') }}
-          {%- if u.last_login %} · seen {{ u.last_login.strftime('%d %b') }}{% endif %}
-        </div>
-      </td>
-      <td>
-        <span class="tag {{ 'tag-open' if u.verified else 'tag-unrel' }}">
-          {{ 'verified' if u.verified else 'unverified' }}</span>
-        {% if u.is_admin %}<span class="tag tag-open">admin</span>{% endif %}
-        {% if u.status != 'active' %}<span class="tag tag-sold">{{ u.status }}</span>{% endif %}
-      </td>
-      <td>
-        {% if u.is_admin %}<span class="u-mt">always</span>
-        {% elif u.access_until %}{{ u.access_until.strftime('%d %b %Y') }}
-        {% else %}<span class="u-mt">—</span>{% endif %}
-      </td>
-      <td>{{ u.favourites }}</td>
-      <td>
-        {% if not u.is_admin %}
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <form method="post" action="{{ url_for('admin.grant') }}" class="inline-form">
-            <input type="hidden" name="_csrf" value="{{ csrf }}">
-            <input type="hidden" name="user_id" value="{{ u.id }}">
-            <input type="number" name="days" value="{{ access_days }}" min="1" max="3650">
-            <input type="text" name="note" placeholder="note">
-            <button class="btn-sm" type="submit">Grant</button>
-          </form>
-          {% if u.access_until %}
-          <form method="post" action="{{ url_for('admin.revoke') }}">
-            <input type="hidden" name="_csrf" value="{{ csrf }}">
-            <input type="hidden" name="user_id" value="{{ u.id }}">
-            <button class="btn-sm btn-danger" type="submit">Revoke</button>
-          </form>
+<div class="ptitle" style="margin-bottom:10px">Accounts</div>
+<div class="tbl-wrap">
+  <table class="u-tbl">
+    <thead>
+      <tr>
+        <th>Account</th><th>Status</th><th>Access until</th>
+        <th style="text-align:center">Treks</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td>
+          <div class="u-em">{{ u.email }}</div>
+          <div class="u-mt">
+            #{{ u.id }}{% if u.name %} · {{ u.name }}{% endif %}
+            · joined {{ u.created_at.strftime('%d %b %Y') }}
+            {%- if u.last_login %} · last seen {{ u.last_login.strftime('%d %b') }}
+            {%- else %} · never signed in{% endif %}
+          </div>
+        </td>
+        <td style="white-space:nowrap">
+          <span class="tag {{ 'tag-open' if u.verified else 'tag-unrel' }}">
+            {{ 'verified' if u.verified else 'unverified' }}</span>
+          {% if u.is_admin %}<span class="tag tag-open">admin</span>{% endif %}
+          {% if u.status != 'active' %}<span class="tag tag-sold">{{ u.status }}</span>{% endif %}
+        </td>
+        <td style="white-space:nowrap">
+          {% if u.is_admin %}
+            <span class="u-mt" style="margin:0">always</span>
+          {% elif u.access_until %}
+            {{ u.access_until.strftime('%d %b %Y') }}
+          {% else %}
+            <span class="u-mt" style="margin:0">no access</span>
           {% endif %}
-        </div>
-        {% endif %}
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-
-<div class="alt"><a href="/app">Back to the board</a></div>
+        </td>
+        <td style="text-align:center">{{ u.favourites }}</td>
+        <td>
+          {% if u.is_admin %}
+            <span class="u-mt" style="margin:0">—</span>
+          {% else %}
+          <div class="row-acts">
+            <form method="post" action="{{ url_for('admin.grant') }}">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <input type="number" name="days" value="{{ access_days }}" min="1" max="3650"
+                     title="Days to add">
+              <input type="text" name="note" placeholder="note" title="Optional note">
+              <button class="btn-sm" type="submit">Grant</button>
+            </form>
+            {% if u.access_until %}
+            <form method="post" action="{{ url_for('admin.revoke') }}">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <button class="btn-sm btn-danger" type="submit">Revoke</button>
+            </form>
+            {% endif %}
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

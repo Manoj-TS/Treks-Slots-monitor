@@ -39,7 +39,12 @@ def create_app():
     @app.context_processor
     def _inject():
         # Available to every template without threading it through each render.
+        # csrf comes from the *existing* session only — deliberately not
+        # security.csrf_token(), which would seed a session cookie for every
+        # anonymous visitor to the public landing page. Pre-login forms pass
+        # their own token explicitly.
         return {"user": getattr(g, "user", None),
+                "csrf": getattr(g, "csrf_token", None) or "",
                 "asset_version": config.ASSET_VERSION,
                 "google_enabled": oauth.enabled()}
 

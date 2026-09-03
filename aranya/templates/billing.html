@@ -1,26 +1,40 @@
-{% extends "auth/base.html" %}
+{% extends "app_base.html" %}
 {% block title %}Get access · Aranya{% endblock %}
 {% block content %}
-<h2>Get access</h2>
-<div class="lead">
-  Your account is ready{% if user %}, {{ user.email }}{% endif %} — it just needs
-  access enabled.
+<div class="page-h">Get access</div>
+<div class="page-sub">
+  Your account is ready{% if user %} ({{ user.email }}){% endif %} — it just needs
+  access switched on.
 </div>
 
-<div class="lrow" style="margin-bottom:14px">
-  <div>
-    <span class="nm">₹99</span>
-    <div class="mt">30 days · one-time · no auto-renew, no card stored</div>
+<div class="card" style="max-width:520px">
+  <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
+    <span style="font-size:2.2rem;font-weight:600;color:var(--text-bright)">₹{{ price }}</span>
+    <span style="color:var(--text-dim);font-size:.9rem">for {{ access_days }} days</span>
   </div>
+  <div class="psub" style="margin-bottom:18px">
+    One-time payment. No auto-renew, nothing to cancel, no card stored.
+  </div>
+
+  <div class="lrow" style="margin-bottom:14px">
+    <div>
+      <span class="nm">Online payment isn't live yet</span>
+      <div class="mt">
+        Email <a href="mailto:{{ support_email }}" style="color:var(--accent)">{{ support_email }}</a>
+        from this address and access is switched on for you, usually within a few
+        hours.
+      </div>
+    </div>
+  </div>
+
+  <a class="btn" href="mailto:{{ support_email }}?subject=Access%20for%20{{ user.email if user else '' }}">
+    Email {{ support_email }}</a>
 </div>
 
-<div class="lead" style="margin-bottom:0">
-  Online payment isn't switched on yet. To get access now, message
-  <a href="mailto:{{ support_email }}" style="color:var(--accent)">{{ support_email }}</a>
-  and it'll be enabled on your account straight away.
-</div>
-
-<div class="alt">
-  <a href="{{ url_for('auth.account') }}">Back to your account</a>
+<div class="psub" style="margin-top:20px;max-width:520px">
+  Aranya shows availability from the Karnataka Forest Department's public portal.
+  It does not book treks, and paying here buys nothing on that portal — see the
+  <a href="{{ url_for('public.terms') }}" style="color:var(--accent)">terms</a> and
+  <a href="{{ url_for('public.refunds') }}" style="color:var(--accent)">refund policy</a>.
 </div>
 {% endblock %}

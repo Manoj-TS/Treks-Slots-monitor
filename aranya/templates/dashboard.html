@@ -29,6 +29,10 @@
       <span class="flash" id="flash"></span>
       <span class="mono" style="color:var(--text-dim)" id="updTxt">—</span>
     </div>
+    {% if user and user.is_admin %}
+      <a class="btn-sm" href="{{ url_for('admin.index') }}">Admin</a>
+    {% endif %}
+    {% include "_usermenu.html" %}
   </div>
 </div>
 

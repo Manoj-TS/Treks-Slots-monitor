@@ -38,6 +38,8 @@ def billing_placeholder():
     coherent instead of a dead link."""
     return render_template("billing.html", user=getattr(g, "user", None),
                            support_email=config.SUPPORT_EMAIL,
+                           price=config.PRICE_RUPEES,
+                           access_days=config.ACCESS_DAYS,
                            csrf=security.csrf_token())
 
 

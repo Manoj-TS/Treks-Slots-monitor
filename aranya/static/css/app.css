@@ -181,6 +181,68 @@ td.cell.is-open{background:color-mix(in srgb,var(--green) 7%,transparent)}
 .cal-pin{position:absolute;top:4px;right:6px;font-size:.72rem;line-height:1}
 .cal-hint{font-size:.74rem;color:var(--text-dim);margin-top:12px}
 
+/* ---------- signed-in user menu (shared by the board and admin) ---------- */
+.umenu{position:relative}
+.umenu>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;
+  padding:6px 10px;border:1px solid var(--border);border-radius:9px;
+  background:var(--surface);font-size:.8rem;color:var(--text)}
+.umenu>summary::-webkit-details-marker{display:none}
+.umenu>summary:hover{border-color:var(--accent-2);color:var(--text-bright)}
+.umenu>summary::after{content:"▾";color:var(--text-dim);font-size:.7rem}
+.umenu .avatar{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(140deg,var(--accent),var(--accent-2));color:#fff;
+  font-size:.7rem;font-weight:600;flex:none;text-transform:uppercase}
+.umenu .who{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.umenu-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:80;min-width:206px;
+  background:var(--surface);border:1px solid var(--border-hi);border-radius:11px;
+  box-shadow:0 12px 34px rgba(0,0,0,.4);padding:6px;overflow:hidden}
+.umenu-panel .hdr{padding:9px 11px 10px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.umenu-panel .hdr .em{font-size:.8rem;color:var(--text-bright);font-weight:500;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.umenu-panel .hdr .st{font-size:.68rem;color:var(--text-dim);margin-top:2px}
+.umenu-panel a,.umenu-panel button{display:block;width:100%;text-align:left;
+  padding:9px 11px;border-radius:7px;font:inherit;font-size:.82rem;color:var(--text);
+  background:none;border:none;cursor:pointer;text-decoration:none}
+.umenu-panel a:hover,.umenu-panel button:hover{background:var(--surface2);color:var(--text-bright)}
+.umenu-panel .sep{height:1px;background:var(--border);margin:6px 0}
+.umenu-panel button.out{color:var(--danger)}
+
+/* ---------- app shell (admin, account, billing) ---------- */
+.app-nav{position:sticky;top:0;z-index:60;padding:12px 0;
+  border-bottom:1px solid var(--border);background:var(--bg2)}
+.app-nav .inner{max-width:1140px;margin:0 auto;padding:0 22px;display:flex;
+  align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.app-nav .brand{display:flex;align-items:center;gap:11px;text-decoration:none}
+.app-nav .brand .logo{width:31px;height:31px;border-radius:9px;display:grid;
+  place-items:center;font-size:1rem;
+  background:linear-gradient(140deg,var(--accent),var(--accent-2))}
+.app-nav .brand .nm{font-size:.98rem;font-weight:600;color:var(--text-bright);line-height:1.15}
+.app-nav .brand .sb{font-size:.6rem;color:var(--text-dim);letter-spacing:.1em;
+  text-transform:uppercase}
+.app-nav .right{display:flex;align-items:center;gap:8px}
+.app-nav .navlink{color:var(--text-dim);text-decoration:none;font-size:.84rem;padding:7px 10px;
+  border-radius:7px}
+.app-nav .navlink:hover{color:var(--text-bright);background:var(--surface)}
+.app-nav .navlink.on{color:var(--text-bright);background:var(--surface)}
+.app-main{max-width:1140px;margin:26px auto 40px;padding:0 22px}
+.app-main.narrow{max-width:520px}
+.page-h{font-size:1.35rem;font-weight:600;color:var(--text-bright);margin-bottom:5px}
+.page-sub{font-size:.85rem;color:var(--text-dim);margin-bottom:22px;max-width:70ch}
+.app-foot{max-width:1140px;margin:0 auto;padding:22px;font-size:.71rem;
+  color:var(--text-dim);border-top:1px solid var(--border);line-height:1.6}
+.app-foot a{color:var(--text-dim)}
+.flash{padding:10px 13px;border-radius:9px;font-size:.83rem;margin-bottom:14px;line-height:1.5}
+.flash.error{background:color-mix(in srgb,var(--danger) 13%,transparent);color:var(--danger);
+  border:1px solid color-mix(in srgb,var(--danger) 34%,transparent)}
+.flash.ok{background:color-mix(in srgb,var(--green) 13%,transparent);color:var(--green);
+  border:1px solid color-mix(in srgb,var(--green) 34%,transparent)}
+
+@media(max-width:600px){
+  .umenu .who{display:none}
+  .app-nav .inner{padding:0 14px}
+  .app-main{padding:0 14px;margin-top:18px}
+}
+
 /* footer disclaimer */
 .disclaimer{margin:26px 0 8px;padding-top:14px;border-top:1px solid var(--border);
   font-size:.72rem;line-height:1.6;color:var(--text-dim);max-width:70ch}

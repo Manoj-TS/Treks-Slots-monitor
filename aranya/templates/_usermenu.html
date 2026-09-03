@@ -1,0 +1,29 @@
+{# Signed-in account menu. Uses <details> so it needs no JavaScript, which also
+   keeps it working under a strict CSP later. #}
+{% if user %}
+<details class="umenu">
+  <summary>
+    <span class="avatar">{{ (user.name or user.email)[0] }}</span>
+    <span class="who">{{ user.email }}</span>
+  </summary>
+  <div class="umenu-panel">
+    <div class="hdr">
+      <div class="em">{{ user.email }}</div>
+      <div class="st">
+        {% if user.is_admin %}Administrator
+        {% elif user.access_until %}Access until {{ user.access_until.strftime('%d %b %Y') }}
+        {% else %}No active access{% endif %}
+      </div>
+    </div>
+    <a href="/app">Your board</a>
+    <a href="{{ url_for('auth.account') }}">Account</a>
+    {% if user.is_admin %}<a href="{{ url_for('admin.index') }}">Admin console</a>{% endif %}
+    {% if not user.is_admin and not user.has_access %}<a href="/billing">Get access</a>{% endif %}
+    <div class="sep"></div>
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <button type="submit" class="out">Sign out</button>
+    </form>
+  </div>
+</details>
+{% endif %}

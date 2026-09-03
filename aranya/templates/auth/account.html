@@ -1,32 +1,56 @@
-{% extends "auth/base.html" %}
+{% extends "app_base.html" %}
 {% block title %}Your account · Aranya{% endblock %}
 {% block content %}
-<h2>Your account</h2>
-<div class="lead">{{ user.email }}</div>
+<div class="page-h">Your account</div>
+<div class="page-sub">{{ user.email }}</div>
 
-<div class="lrow" style="margin-bottom:8px">
-  <div><span class="nm">Email</span><div class="mt">{{ user.email }}</div></div>
-  <span class="tag {{ 'tag-open' if user.email_verified else 'tag-unrel' }}">
-    {{ 'confirmed' if user.email_verified else 'unconfirmed' }}</span>
-</div>
-
-<div class="lrow" style="margin-bottom:8px">
-  <div>
-    <span class="nm">Access</span>
-    <div class="mt">
-      {% if user.is_admin %}Administrator
-      {% elif user.access_until %}Until {{ user.access_until.strftime('%d %b %Y') }}
-      {% else %}No active subscription{% endif %}
+<div class="card" style="max-width:620px">
+  <div class="lrow" style="margin-bottom:8px">
+    <div>
+      <span class="nm">Email address</span>
+      <div class="mt">{{ user.email }}</div>
     </div>
+    <span class="tag {{ 'tag-open' if user.email_verified else 'tag-unrel' }}">
+      {{ 'confirmed' if user.email_verified else 'unconfirmed' }}</span>
   </div>
-  <span class="tag {{ 'tag-open' if user.has_access else 'tag-sold' }}">
-    {{ 'active' if user.has_access else 'inactive' }}</span>
+
+  <div class="lrow" style="margin-bottom:8px">
+    <div>
+      <span class="nm">Access</span>
+      <div class="mt">
+        {% if user.is_admin %}Administrator — full access
+        {% elif user.access_until %}
+          Runs until {{ user.access_until.strftime('%d %B %Y') }}
+        {% else %}
+          No active access
+        {% endif %}
+      </div>
+    </div>
+    <span class="tag {{ 'tag-open' if user.has_access else 'tag-sold' }}">
+      {{ 'active' if user.has_access else 'inactive' }}</span>
+  </div>
+
+  <div class="lrow">
+    <div>
+      <span class="nm">Sign-in method</span>
+      <div class="mt">
+        {% if user.has_password %}Email and password{% else %}Google{% endif %}
+      </div>
+    </div>
+    <a class="btn-sm" href="{{ url_for('auth.forgot') }}">
+      {{ 'Change password' if user.has_password else 'Set a password' }}</a>
+  </div>
 </div>
 
-<form method="post" action="{{ url_for('auth.logout') }}" style="margin-top:18px">
-  <input type="hidden" name="_csrf" value="{{ csrf }}">
-  <button class="btn" type="submit">Sign out</button>
-</form>
-
-<div class="alt"><a href="{{ url_for('auth.forgot') }}">Change your password</a></div>
+<div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+  {% if user.has_access or user.is_admin %}
+    <a class="btn" href="/app">Open your board</a>
+  {% else %}
+    <a class="btn" href="/billing">Get access</a>
+  {% endif %}
+  <form method="post" action="{{ url_for('auth.logout') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <button class="btn-sm btn-danger" type="submit">Sign out</button>
+  </form>
+</div>
 {% endblock %}
