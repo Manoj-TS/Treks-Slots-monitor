@@ -26,6 +26,9 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 # work correctly even though the app runs with WORKDIR=/data below.
 COPY wsgi.py /app/wsgi.py
 COPY aranya/ /app/aranya/
+# db.py resolves this as <package parent>/migrations — it must be in the image
+# or migrate() silently finds no files and creates no tables.
+COPY migrations/ /app/migrations/
 
 RUN mkdir -p /data && chown -R 10001:10001 /data /app
 

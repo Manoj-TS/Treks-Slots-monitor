@@ -21,6 +21,14 @@ PORT = int(os.environ.get("PORT", "5020"))
 # asset. GIT_SHA is exported by start.sh; "dev" outside that context.
 ASSET_VERSION = os.environ.get("GIT_SHA", "dev")
 
+# Postgres. Unset means "run on the legacy JSON files" — see storage.init_storage.
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+# Everything is stored per user_id already, but there is exactly one account
+# today. When accounts land, these call sites take g.user.id instead.
+OWNER_USER_ID = 1
+OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "owner@aranyavihaara.org")
+
 DISTRICT_NAMES = {
     4: "Kalaburagi", 11: "Chikkaballapura", 15: "Shivamogga", 16: "Udupi",
     17: "Chikkamagaluru", 19: "Kolar", 21: "Bengaluru Gramantara",

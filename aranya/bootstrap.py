@@ -2,7 +2,7 @@
 
 import threading
 
-from . import discovery, storage, sweeper
+from . import config, discovery, storage, sweeper
 
 _started = False
 
@@ -13,6 +13,10 @@ def start_background():
     if _started:
         return
     _started = True
-    storage.load_all_from_disk()
+    # Connect + migrate before loading. A database failure is logged and
+    # degrades to the JSON files rather than preventing startup — the board is
+    # public data and must keep serving.
+    storage.init_storage()
+    storage.load_all(config.OWNER_USER_ID)
     threading.Thread(target=discovery.discovery_loop, daemon=True).start()
     threading.Thread(target=sweeper.supervised_worker, daemon=True).start()

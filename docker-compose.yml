@@ -15,11 +15,25 @@ services:
       - "127.0.0.1:5020:5020"
     volumes:
       - ./data:/data
+    env_file:
+      - .env
     environment:
       TZ: Asia/Kolkata
+    networks:
+      - default
+      - acube_default
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
     stop_grace_period: 10s
+
+networks:
+  default: {}
+  # The Postgres container used by the unrelated acube project on this VPS,
+  # reused here for aranya's own database+role rather than running a second
+  # Postgres. `external: true` means "join a network created elsewhere" — it
+  # does NOT give this project any control over that network's lifecycle.
+  acube_default:
+    external: true

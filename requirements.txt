@@ -5,3 +5,7 @@ beautifulsoup4>=4.12
 # Production WSGI server. Pinned: 3.0.1 fixed CVE-2024-49768/49769.
 # Must stay single-process — see the note in the Dockerfile CMD.
 waitress==3.0.2
+
+# Postgres. No ORM: a handful of tables and hand-written queries.
+psycopg[binary]>=3.2
+psycopg-pool>=3.2

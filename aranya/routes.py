@@ -161,7 +161,7 @@ def api_favourites():
                 return jsonify({"error": f"Trek {tid} has no district_id."}), 400
             state.favourites.append({"trek_id": tid, "name": name,
                                "district_id": did, "district_name": config.district_name(did)})
-            storage.save_favourites()
+            storage.save_favourites(config.OWNER_USER_ID)
         state.mark_changed()
         return jsonify({"ok": True})
     # DELETE
@@ -171,7 +171,7 @@ def api_favourites():
         return jsonify({"error": "Invalid trek id"}), 400
     with state.lock:
         state.favourites = [f for f in state.favourites if f["trek_id"] != tid]
-        storage.save_favourites()
+        storage.save_favourites(config.OWNER_USER_ID)
     state.mark_changed()
     return jsonify({"ok": True})
 
@@ -186,7 +186,7 @@ def api_favourites_reorder():
             if f["trek_id"] not in order:
                 newlist.append(f)
         state.favourites = newlist
-        storage.save_favourites()
+        storage.save_favourites(config.OWNER_USER_ID)
     state.mark_changed()
     return jsonify({"ok": True})
 
@@ -223,7 +223,7 @@ def api_watch():
             if not any(w["trek_id"] == tid and w["date"] == d for w in state.custom_watch):
                 state.custom_watch.append({"trek_id": tid, "name": name, "district_id": did,
                                      "district_name": config.district_name(did), "date": d})
-                storage.save_watch()
+                storage.save_watch(config.OWNER_USER_ID)
         state.mark_changed()
         return jsonify({"ok": True})
     # DELETE
@@ -235,7 +235,7 @@ def api_watch():
     with state.lock:
         state.custom_watch = [w for w in state.custom_watch
                                      if not (w["trek_id"] == tid and w["date"] == d)]
-        storage.save_watch()
+        storage.save_watch(config.OWNER_USER_ID)
     state.mark_changed()
     return jsonify({"ok": True})
 
@@ -252,13 +252,13 @@ def api_trek_configs():
             return jsonify({"error": err}), 400
         with state.lock:
             state.trek_configs[str(cfg["trek_id"])] = cfg
-            storage.save_treks()
+            storage.save_treks(config.OWNER_USER_ID)
         state.mark_changed()
         return jsonify({"ok": True})
     tid = str(body.get("trek_id"))
     with state.lock:
         state.trek_configs.pop(tid, None)
-        storage.save_treks()
+        storage.save_treks(config.OWNER_USER_ID)
     state.mark_changed()
     return jsonify({"ok": True})
 
@@ -281,7 +281,7 @@ def api_settings():
                 state.settings["cadence"] = max(5, min(600, int(body["cadence"])))
             except (TypeError, ValueError):
                 pass
-        storage.save_settings()
+        storage.save_settings(config.OWNER_USER_ID)
         out = dict(state.settings)
     state.mark_changed()
     return jsonify(out)
