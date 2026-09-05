@@ -129,6 +129,21 @@ def behind_seconds(targets: dict) -> float:
     return max(overdue) if overdue else 0.0
 
 
+def next_due_seconds(keys) -> float | None:
+    """Seconds until the soonest scheduled check among these cells.
+
+    Returned as a *duration*, never a raw `_due` value: those are
+    time.monotonic() floats — process-relative, with no epoch — so they are
+    meaningless to a browser. A duration also sidesteps client clock skew.
+    """
+    now = time.monotonic()
+    with _sched_lock:
+        upcoming = [_due[k] for k in keys if k in _due]
+    if not upcoming:
+        return None
+    return max(0.0, min(upcoming) - now)
+
+
 # ── Force refresh ─────────────────────────────────────────────────────────── #
 
 def request_refresh(user_id: int, keys: list[str]) -> tuple[int, float]:
@@ -265,6 +280,7 @@ def worker_loop():
     last_reload = 0.0
     last_publish = 0.0
     last_heartbeat = 0.0
+    last_stats = 0.0
     dirty = False
     targets: dict = {}
     fetched_since_pass = 0
@@ -356,8 +372,14 @@ def worker_loop():
             with state.lock:
                 changed = _significant(state.board_state.get(key), cell)
                 state.board_state[key] = cell
-                state.stats["last_update"] = datetime.now().isoformat()
                 state.stats["error"] = None
+                if changed:
+                    # "last_update" means the last time the BOARD CHANGED, not
+                    # the last time we fetched anything. On a drip the latter
+                    # advances ~3x/second, so "updated just now" would be
+                    # permanent and would tell a customer nothing.
+                    state.stats["last_update"] = datetime.now().isoformat()
+                    state.stats["content_version"] += 1
             reschedule(key, cell)
             dirty = dirty or changed
 
@@ -369,14 +391,22 @@ def worker_loop():
                     state.stats["cycle"] = cycle
 
             now = time.time()
-            with state.lock:
-                state.stats["skipped"] = len(targets) - due_count(targets)
-                state.stats["behind"] = round(behind_seconds(targets))
+            # These are two full scans of _due under the scheduler lock. Doing
+            # them per fetch (~3x/s) was wasted work — recompute a few times a
+            # minute instead; they only feed a display.
+            if now - last_stats >= 5.0:
+                last_stats = now
+                with state.lock:
+                    state.stats["skipped"] = len(targets) - due_count(targets)
+                    state.stats["behind"] = round(behind_seconds(targets))
             if dirty and now - last_publish >= config.PUBLISH_MIN_INTERVAL:
                 state.mark_changed()
                 dirty, last_publish, last_heartbeat = False, now, now
             elif now - last_heartbeat >= config.PUBLISH_HEARTBEAT:
-                # Nothing changed, but let the header's "updated Xs ago" move.
+                # Nothing changed, but the client's countdown needs a fresh
+                # next_check or it would run to zero and sit there on a quiet
+                # board. content_version is deliberately NOT bumped, so the UI
+                # doesn't pulse as though something happened.
                 state.mark_changed()
                 last_heartbeat = now
 

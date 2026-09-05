@@ -69,18 +69,70 @@ function switchTab(name){
   else if(name==='settings')renderSettings();
 }
 
+/* ---------- live freshness ----------
+   The server sends next_check as a DURATION in seconds (its schedule is kept
+   in monotonic time, which is meaningless to a browser). Convert it to an
+   absolute instant on arrival and count down locally, the same way the refresh
+   button's cooldown works. */
+var nextCheckAt=null, lastContentVersion=null;
+
+function oldestReadingAge(){
+  // Every cell already carries the wall-clock time it was checked; the oldest
+  // one is the honest answer to "how current is what I'm looking at".
+  var oldest=null;
+  (latest.rows||[]).forEach(function(r){
+    Object.keys(r.cells||{}).forEach(function(iso){
+      var c=r.cells[iso];
+      if(c&&c.checked){var t=new Date(c.checked).getTime();
+        if(oldest===null||t<oldest)oldest=t;}
+    });
+  });
+  return oldest;
+}
+
+function freshTick(){
+  var el=document.getElementById('freshTxt');
+  if(!el)return;
+  var parts=[];
+  // A countdown would be a lie while the sweeper is behind: it would hit zero
+  // and reset with nothing actually happening. Say so instead.
+  if(latest.behind&&latest.behind>60){
+    parts.push('catching up');
+  }else if(nextCheckAt!==null){
+    var s=Math.round((nextCheckAt-Date.now())/1000);
+    parts.push(s>0?('next check '+(s>=60?(Math.floor(s/60)+'m '+(s%60)+'s'):(s+'s')))
+                  :'checking…');
+  }
+  var oldest=oldestReadingAge();
+  if(oldest!==null){
+    var age=Math.round((Date.now()-oldest)/1000);
+    if(age>=60)parts.push('oldest '+Math.floor(age/60)+'m');
+  }
+  el.textContent=parts.join(' · ');
+}
+
 /* ---------- SSE ---------- */
 function render(state){
   latest=state;
   var dot=document.getElementById('dot'),txt=document.getElementById('statusTxt');
   if(state.error){dot.className='dot err';txt.textContent=state.error;}
-  else{dot.className='dot';txt.textContent='Live · sweep '+state.cycle;}
-  document.getElementById('updTxt').textContent='updated '+timeAgo(state.last_update);
+  else{dot.className='dot';txt.textContent='Live';}
+  nextCheckAt=(state.next_check===null||state.next_check===undefined)
+    ? null : Date.now()+state.next_check*1000;
+  freshTick();
   document.getElementById('rangeTxt').textContent=fmtDate(state.window_start)+' – '+fmtDate(state.window_end)+' · next '+state.window_days+'d';
   document.querySelectorAll('#winSeg button').forEach(function(b){b.classList.toggle('on',+b.dataset.d===state.window_days);});
-  var f=document.getElementById('flash');f.classList.add('on');setTimeout(function(){f.classList.remove('on');},350);
+  // Pulse only when the board really changed. Most publishes are the periodic
+  // keep-alive that refreshes this countdown, and flashing then would signal
+  // movement that didn't happen.
+  if(lastContentVersion!==null&&state.content_version!==lastContentVersion){
+    var f=document.getElementById('flash');
+    f.classList.add('on');setTimeout(function(){f.classList.remove('on');},350);
+  }
+  lastContentVersion=state.content_version;
   if(activeTab==='board')renderBoard();
 }
+setInterval(freshTick,1000);
 
 /* ---------- BOARD ---------- */
 function cellStatus(iso,cell){
@@ -173,8 +225,12 @@ function renderBoard(){
       var cls='cell '+s.cls+(firstOfGroup[c.iso]?' wkend-start':'')+(s.cls==='st-open'?' is-open':'');
       // bar colour grades with how full the slot is: green > 40% > amber > 15% > red
       var lvl=s.bar<0.15?' lo':(s.bar<0.40?' mid':'');
+      // Sold-out and unreleased cells are re-checked slowly on purpose, so say
+      // when this particular number was last verified.
+      var cell=r.cells[c.iso];
+      var tip=(cell&&cell.checked)?(' title="Checked '+timeAgo(cell.checked)+'"'):'';
       var inner='<div class="pill '+s.cls+'"><span class="st">'+esc(s.st)+'</span>'+(s.nn?'<span class="nn">'+esc(s.nn)+'</span>':'')+(s.cls==='st-open'?'<span class="bar"><i class="'+lvl.trim()+'" style="width:'+Math.round(s.bar*100)+'%"></i></span>':'')+'</div>';
-      tds+='<td class="'+cls+'">'+inner+'</td>';
+      tds+='<td class="'+cls+'"'+tip+'>'+inner+'</td>';
     });
     return '<tr class="tr-row"><td class="trek-cell"><div class="trek-name">'+esc(r.name)+'</div><div class="trek-dist">'+esc(r.district_name||'')+'</div></td>'+tds+'</tr>';
   }
@@ -335,8 +391,12 @@ function renderSettings(){
        everyone, kept deliberately gentle on the government portal, so it is not
        something an individual account gets to turn up. */
     +'<div class="psub" style="margin:16px 0 0;padding-top:14px;border-top:1px solid var(--border)">'
-      +'Availability refreshes about every <b>'+(latest.cadence||40)+'s</b> for everyone. '
-      +'That rate is set centrally to stay light on the forest department portal.</div>'
+      +'<b>How often things refresh.</b> Slots that currently have seats are re-checked about '
+      +'every <b>'+(latest.cadence||40)+'s</b>. Sold-out and not-yet-released dates are checked '
+      +'far less often — this portal never re-releases a cancelled ticket, and unreleased dates '
+      +'open on a daily cycle, so those answers cannot change in between. It keeps us light on '
+      +'the forest department portal. Need a number confirmed right now? Use '
+      +'<b>Refresh now</b> at the top.</div>'
     +'</div>';
 }
 function setTheme(t){prefs.theme=t;savePrefs();applyTheme();renderSettings();}
@@ -350,7 +410,7 @@ function saveServerSettings(){
   .then(function(r){return r.json();})
   .then(function(d){
     if(d && d.error){document.getElementById('setMsg').textContent=d.error;return;}
-    document.getElementById('setMsg').textContent='Saved. Your board updates on the next sweep.';
+    document.getElementById('setMsg').textContent='Saved. Your board updates shortly.';
   });
 }
 

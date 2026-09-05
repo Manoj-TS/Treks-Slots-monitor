@@ -101,12 +101,27 @@ def build_state_for(view) -> dict:
         # `error` is a global fault (portal down); `hint` is about this user.
         error = state.stats["error"] or state.registry["error"]
         stats_snapshot = {"cycle": state.stats["cycle"],
-                          "last_update": state.stats["last_update"]}
+                          "last_update": state.stats["last_update"],
+                          "content_version": state.stats["content_version"],
+                          "behind": state.stats["behind"]}
         catalog_ready = state.registry["ready"]
 
     hint = None
     if not view.favourites:
         hint = "Add treks under the Favourites tab to build your board."
+
+    # Seconds until the next scheduled check of one of THIS user's cells.
+    # A duration, not a timestamp: _due holds time.monotonic() values, which
+    # are process-relative and meaningless to a browser.
+    #
+    # Two constraints, both easy to break by accident:
+    #  * Imported here, not at module scope: sweeper imports board, so a
+    #    top-level import would be circular.
+    #  * Called OUTSIDE the state.lock block above. sweeper.reschedule takes
+    #    _sched_lock and then state.lock; taking them in the opposite order
+    #    here would be a lock-order inversion and could deadlock the worker.
+    from . import sweeper
+    next_check = sweeper.next_due_seconds(sweeper.user_cell_keys(view))
 
     return {
         "ready": True,
@@ -115,6 +130,9 @@ def build_state_for(view) -> dict:
         "hint": hint,
         "cycle": stats_snapshot["cycle"],
         "last_update": stats_snapshot["last_update"],
+        "content_version": stats_snapshot["content_version"],
+        "next_check": None if next_check is None else round(next_check),
+        "behind": stats_snapshot["behind"],
         "window_days": view.window_days,
         "cadence": state.settings["cadence"],
         "window_start": today.isoformat(),
