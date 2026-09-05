@@ -20,7 +20,7 @@ board_state = {}
 # be able to set the poll rate against the government portal for everyone.
 settings = {"cadence": config.BOARD_CYCLE_DEFAULT}
 stats = {"cycle": 0, "last_update": None, "error": None, "worker_alive": False,
-         "targets": 0, "skipped": 0}
+         "targets": 0, "skipped": 0, "behind": 0}
 
 lock = threading.Lock()
 state_changed = threading.Event()

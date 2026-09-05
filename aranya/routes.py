@@ -96,6 +96,27 @@ def api_stream():
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
+@bp.route("/api/refresh", methods=["POST"])
+@security.paid_required
+def api_refresh():
+    """Re-check this user's own cells right now.
+
+    Background polling is deliberately slow for cells whose answers cannot have
+    changed, so this is how someone about to promise a client a seat gets live
+    truth. It can only *reorder* work already scheduled — never add a target,
+    never bypass the shared rate limit — so it cannot increase portal load.
+    """
+    view = views.get(g.user.id)
+    keys = sweeper.user_cell_keys(view)
+    queued, cooldown = sweeper.request_refresh(g.user.id, keys)
+
+    if queued == 0 and cooldown < config.FORCE_REFRESH_COOLDOWN:
+        # Rejected by the cooldown rather than having nothing to do.
+        return jsonify({"ok": False, "error": "Just refreshed — give it a moment.",
+                        "cooldown": round(cooldown)}), 429
+    return jsonify({"ok": True, "cells": queued, "cooldown": round(cooldown)})
+
+
 @bp.route("/api/trek-calendar")
 @security.paid_required
 def api_trek_calendar():

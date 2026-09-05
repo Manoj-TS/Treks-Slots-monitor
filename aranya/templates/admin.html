@@ -37,7 +37,11 @@
 <div class="stat-strip">
   <span class="s">sweep <b>{{ stats.cycle }}</b></span>
   <span class="s">targets <b>{{ stats.targets }}</b></span>
-  <span class="s">sold-out skipped <b>{{ stats.skipped }}</b></span>
+  <span class="s">not due <b>{{ stats.skipped }}</b></span>
+  {# Overdue means demand is outrunning SWEEP_RPS — the board goes stale rather
+     than the portal getting hit harder, but the operator should see it. #}
+  <span class="s {{ 'bad' if stats.get('behind', 0) > 300 }}">behind
+    <b>{{ stats.get('behind', 0) }}s</b></span>
   <span class="s {{ '' if stats.worker_alive else 'bad' }}">worker
     <b>{{ 'alive' if stats.worker_alive else 'DOWN' }}</b></span>
   <span class="s {{ '' if db_ready else 'bad' }}">database
@@ -78,16 +82,18 @@
   </div>
 
   <div class="card">
-    <div class="ptitle">Sweep interval</div>
+    <div class="ptitle">Open-slot refresh</div>
     <div class="psub">
-      Global, in seconds. Higher is gentler on the government portal. This is not a
-      per-user setting for exactly that reason.
+      How often a slot that currently has seats is re-checked. Sold-out and
+      unreleased dates are polled far more slowly, since their answers can't
+      change until the next daily release. Global, not per-user — one account
+      must not set how hard everyone polls the portal.
     </div>
     <form method="post" action="{{ url_for('admin.set_cadence') }}">
       <input type="hidden" name="_csrf" value="{{ csrf }}">
       <div class="row">
         <div style="flex:1">
-          <label class="fld">Seconds between sweeps</label>
+          <label class="fld">Seconds between checks</label>
           <input type="number" name="cadence" min="20" max="900" value="{{ cadence }}">
         </div>
         <div style="flex:0;align-self:flex-end">

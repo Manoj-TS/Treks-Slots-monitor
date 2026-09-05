@@ -16,6 +16,27 @@ SWEEP_RPS = float(os.environ.get("SWEEP_RPS", "3.0"))
 MAX_TARGETS = int(os.environ.get("MAX_TARGETS", "1500"))
 VIEW_RELOAD_SECONDS = int(os.environ.get("VIEW_RELOAD_SECONDS", "60"))
 
+# ── Per-cell refresh schedule ─────────────────────────────────────────────── #
+# How stale each kind of cell is allowed to get. Only "open" cells hold data
+# that genuinely moves; the other two are re-checked slowly purely to catch a
+# correction on the portal's side, not because they are expected to change.
+#
+# OPEN_INTERVAL is not here: it comes from the operator-set `cadence` in
+# app_settings, so it stays adjustable from /admin without a deploy.
+SOLD_OUT_INTERVAL = int(os.environ.get("SOLD_OUT_INTERVAL", "1800"))
+UNRELEASED_INTERVAL = int(os.environ.get("UNRELEASED_INTERVAL", "1800"))
+
+# Republish to connected viewers at most this often, and at least this often.
+# The floor stops a drip from invalidating every viewer's payload cache several
+# times a second; the heartbeat keeps "updated Xs ago" honest.
+PUBLISH_MIN_INTERVAL = float(os.environ.get("PUBLISH_MIN_INTERVAL", "2.0"))
+PUBLISH_HEARTBEAT = float(os.environ.get("PUBLISH_HEARTBEAT", "15.0"))
+
+# User-triggered "Refresh now". This is a path from a browser button to a
+# .gov.in portal, so it carries its own limits on top of the shared bucket.
+FORCE_REFRESH_COOLDOWN = int(os.environ.get("FORCE_REFRESH_COOLDOWN", "120"))
+MAX_FORCE_CELLS = int(os.environ.get("MAX_FORCE_CELLS", "120"))
+
 # Per-user ceilings, enforced at write time.
 MAX_FAVOURITES_PER_USER = int(os.environ.get("MAX_FAVOURITES_PER_USER", "25"))
 MAX_WATCH_PER_USER = int(os.environ.get("MAX_WATCH_PER_USER", "50"))

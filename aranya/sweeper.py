@@ -1,28 +1,167 @@
-"""The polling worker: decides what to check across all paying users, sweeps
-it under a global rate limit, and writes results into the shared cell cache."""
+"""The polling worker.
+
+Fetches one cell at a time at a steady rate rather than bursting, and decides
+what to fetch next from a per-cell due time rather than sweeping everything on
+a fixed cycle.
+
+Two reasons for the shape:
+
+* A burst of 8 concurrent connections every few seconds looks far more like
+  something worth rate-limiting than a steady trickle does. Rate limiters and
+  WAFs trigger on burstiness, not on daily totals, and losing this IP means
+  every paying customer sees an empty board.
+* Most cells hold answers that cannot have changed. A sold-out date is terminal
+  (this portal never cancels or re-releases tickets) and an unreleased date
+  stays unreleased until the next daily release. Re-asking those every cycle
+  was the bulk of the traffic, and it was worst in peak season when most cells
+  are sold out.
+
+The saving is spent where it matters: *open* cells — the only ones customers
+act on — are still refreshed on the operator-set cadence.
+"""
 
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
+from collections import deque
 from datetime import date, datetime, timedelta
 
 from . import board, config, portal, ratelimit, state, storage, views
 
 PORTAL_BUCKET = ratelimit.TokenBucket(config.SWEEP_RPS, burst=10)
 
-# A released cell with zero seats is terminal: this portal never cancels or
-# re-releases tickets, so it cannot go back up. Re-checking it every cycle is
-# the single biggest waste of portal budget, and it is worst in peak season
-# when most cells are sold out. Check it occasionally anyway, to catch a
-# correction on the portal's side.
-SOLD_OUT_EVERY = 10
+# key -> monotonic timestamp when this cell should next be fetched.
+_due: dict[str, float] = {}
+# Cells a user explicitly asked to refresh. Drained before the due map, so a
+# "Refresh now" click is served ahead of routine work.
+_priority: deque[str] = deque()
+# user_id -> monotonic timestamp of their last accepted force refresh.
+_last_force: dict[int, float] = {}
+_sched_lock = threading.Lock()
 
-_sweep_counter = 0
+_last_rollover: date | None = None
 
 
-def _is_terminal(cell) -> bool:
-    return bool(cell) and cell.get("released") and cell.get("available", 0) == 0
+# ── Scheduling ────────────────────────────────────────────────────────────── #
 
+def _interval_for(cell) -> float:
+    """How long this cell's answer stays trustworthy."""
+    if not cell:
+        return 0.0                                   # never fetched: do it now
+    if not cell.get("released"):
+        return config.UNRELEASED_INTERVAL            # opens on the daily cycle
+    if cell.get("available", 0) <= 0:
+        return config.SOLD_OUT_INTERVAL              # terminal; poll for corrections
+    with state.lock:
+        return max(20, int(state.settings["cadence"]))   # open: the live number
+
+
+def reschedule(key: str, cell) -> None:
+    with _sched_lock:
+        _due[key] = time.monotonic() + _interval_for(cell)
+
+
+def sync_schedule(targets: dict) -> None:
+    """Add newly-watched cells (due immediately) and forget dropped ones."""
+    with _sched_lock:
+        for key in targets:
+            if key not in _due:
+                _due[key] = 0.0                      # never seen: highest priority
+        for key in [k for k in _due if k not in targets]:
+            _due.pop(key, None)
+
+
+def flush_unreleased() -> int:
+    """Mark every unreleased cell due now.
+
+    Called when the calendar date changes. That is the moment the portal's
+    daily release happens *and* the moment the rolling window shifts, so one
+    trigger covers both — no release hour has to be hardcoded.
+    """
+    n = 0
+    with state.lock:
+        unreleased = [k for k, c in state.board_state.items()
+                      if c and not c.get("released")]
+    with _sched_lock:
+        for key in unreleased:
+            if key in _due:
+                _due[key] = 0.0
+                n += 1
+    return n
+
+
+def next_cell(targets: dict) -> tuple[str | None, float]:
+    """The cell to fetch now, and how long to wait if none is due.
+
+    A linear scan: at the MAX_TARGETS ceiling of 1500 that is a few thousand
+    comparisons a second, which is nothing, and it avoids keeping a heap in
+    sync with a set that changes underneath it.
+    """
+    now = time.monotonic()
+    with _sched_lock:
+        while _priority:
+            key = _priority.popleft()
+            if key in targets:
+                return key, 0.0
+        best, best_due = None, None
+        for key, due in _due.items():
+            if key not in targets:
+                continue
+            if best_due is None or due < best_due:
+                best, best_due = key, due
+        if best is None:
+            return None, 1.0
+        if best_due <= now:
+            return best, 0.0
+        return None, min(best_due - now, 5.0)
+
+
+def due_count(targets: dict) -> int:
+    now = time.monotonic()
+    with _sched_lock:
+        return sum(1 for k, d in _due.items() if k in targets and d <= now)
+
+
+def behind_seconds(targets: dict) -> float:
+    """How overdue the most overdue cell is — surfaces demand exceeding SWEEP_RPS."""
+    now = time.monotonic()
+    with _sched_lock:
+        overdue = [now - d for k, d in _due.items() if k in targets and d < now]
+    return max(overdue) if overdue else 0.0
+
+
+# ── Force refresh ─────────────────────────────────────────────────────────── #
+
+def request_refresh(user_id: int, keys: list[str]) -> tuple[int, float]:
+    """Queue a user's own cells for immediate re-check.
+
+    Returns (cells_queued, seconds_until_next_allowed). This can only reorder
+    work the sweeper was already going to do — it never adds a target, and it
+    draws from the same token bucket — so it cannot increase portal load.
+    """
+    now = time.monotonic()
+    with _sched_lock:
+        last = _last_force.get(user_id)
+        if last is not None and now - last < config.FORCE_REFRESH_COOLDOWN:
+            return 0, config.FORCE_REFRESH_COOLDOWN - (now - last)
+        _last_force[user_id] = now
+        queued = 0
+        already = set(_priority)
+        for key in keys[:config.MAX_FORCE_CELLS]:
+            if key in _due and key not in already:
+                _priority.append(key)
+                queued += 1
+    return queued, float(config.FORCE_REFRESH_COOLDOWN)
+
+
+def cooldown_remaining(user_id: int) -> float:
+    with _sched_lock:
+        last = _last_force.get(user_id)
+    if last is None:
+        return 0.0
+    return max(0.0, config.FORCE_REFRESH_COOLDOWN - (time.monotonic() - last))
+
+
+# ── Target set ────────────────────────────────────────────────────────────── #
 
 def board_targets() -> dict:
     """Union of every paying user's (favourites x their weekend window), plus
@@ -68,18 +207,23 @@ def board_targets() -> dict:
     return targets
 
 
-def due_targets(targets: dict, sweep_no: int) -> tuple[dict, int]:
-    """Drop terminal (sold-out) cells except every Nth sweep."""
-    if sweep_no % SOLD_OUT_EVERY == 0:
-        return targets, 0
-    due, skipped = {}, 0
-    with state.lock:
-        for key, tgt in targets.items():
-            if _is_terminal(state.board_state.get(key)):
-                skipped += 1
-            else:
-                due[key] = tgt
-    return due, skipped
+def user_cell_keys(view) -> list[str]:
+    """The cells on one user's board — what a force refresh acts on."""
+    if view is None:
+        return []
+    today = date.today()
+    keys = []
+    for d in board.window_weekends(view.window_days):
+        for f in view.favourites:
+            if f.district_id is not None:
+                keys.append(f"{f.trek_id}_{d.isoformat()}")
+    for w in view.watch:
+        try:
+            if datetime.strptime(w.date, "%Y-%m-%d").date() >= today:
+                keys.append(f"{w.trek_id}_{w.date}")
+        except Exception:
+            continue
+    return keys
 
 
 def gc_board_state(active_keys: set, today: date) -> int:
@@ -95,91 +239,147 @@ def gc_board_state(active_keys: set, today: date) -> int:
     return dropped
 
 
-def _fetch(session, csrf, tgt):
-    # Rate-limited at the point of the outbound call, so both the sweep and
-    # on-demand calendar lookups draw from the same budget.
-    PORTAL_BUCKET.acquire()
-    return portal.check_target(session, csrf, tgt)
+def _significant(old, new) -> bool:
+    """Did this fetch actually change what a viewer would see?
 
+    Most fetches confirm "still sold out" and change nothing but the timestamp.
+    Republishing those would invalidate every viewer's payload cache for no
+    visible reason, which on a drip means several needless re-serialisations a
+    second — strictly worse than the burst design it replaces.
+    """
+    if old is None or new is None:
+        return True
+    return (old.get("released") != new.get("released")
+            or old.get("available") != new.get("available")
+            or old.get("capacity") != new.get("capacity"))
+
+
+# ── The loop ──────────────────────────────────────────────────────────────── #
 
 def worker_loop():
-    global _sweep_counter
+    global _last_rollover
     session = portal.new_session()
     csrf = None
-    bad_cycles = 0
+    bad = 0
     cycle = state.stats["cycle"]
     last_reload = 0.0
+    last_publish = 0.0
+    last_heartbeat = 0.0
+    dirty = False
+    targets: dict = {}
+    fetched_since_pass = 0
+    _last_rollover = date.today()
 
     while True:
         try:
             with state.lock:
                 state.stats["worker_alive"] = True
 
-            # Refresh who wants what, before deciding what to sweep.
-            if time.time() - last_reload > config.VIEW_RELOAD_SECONDS:
-                storage.reload_views()
-                last_reload = time.time()
+            now_wall = time.time()
 
-            targets = board_targets()
-            if not targets:
+            # Who wants what. Also the moment new dates enter the window.
+            if now_wall - last_reload > config.VIEW_RELOAD_SECONDS:
+                storage.reload_views()
+                targets = board_targets()
+                sync_schedule(targets)
+                gc_board_state(set(targets.keys()), date.today())
+                last_reload = now_wall
                 with state.lock:
-                    state.stats["error"] = None
-                    state.stats["targets"] = 0
-                state.mark_changed()
-                time.sleep(5)
-                continue
+                    state.stats["targets"] = len(targets)
+
+            # The portal releases on a daily cycle, so the date changing is
+            # when unreleased answers stop being trustworthy.
+            today = date.today()
+            if today != _last_rollover:
+                _last_rollover = today
+                targets = board_targets()
+                sync_schedule(targets)
+                n = flush_unreleased()
+                gc_board_state(set(targets.keys()), today)
+                print(f"[Sweeper] Date rolled over to {today}; "
+                      f"re-checking {n} unreleased cells.")
+
+            if not targets:
+                targets = board_targets()
+                sync_schedule(targets)
+                if not targets:
+                    with state.lock:
+                        state.stats["error"] = None
+                        state.stats["targets"] = 0
+                    time.sleep(5)
+                    continue
 
             if not csrf:
                 csrf = portal.fetch_csrf(session)
                 if not csrf:
-                    bad_cycles += 1
+                    bad += 1
                     with state.lock:
                         state.stats["error"] = "Portal connection failed — retrying…"
                     state.mark_changed()
-                    if bad_cycles >= config.SESSION_RESET_AFTER:
+                    if bad >= config.SESSION_RESET_AFTER:
                         session = portal.new_session()
-                        bad_cycles = 0
-                    time.sleep(min(3 * (bad_cycles or 1), 15))
+                        bad = 0
+                    time.sleep(min(3 * (bad or 1), 15))
                     continue
 
-            _sweep_counter += 1
-            due, skipped = due_targets(targets, _sweep_counter)
-            keys = list(due.keys())
-            tgts = [due[k] for k in keys]
+            key, wait = next_cell(targets)
+            if key is None:
+                # Nothing due. Publish anything pending, then idle briefly.
+                if dirty and time.time() - last_publish >= config.PUBLISH_MIN_INTERVAL:
+                    state.mark_changed()
+                    dirty, last_publish = False, time.time()
+                time.sleep(min(wait, 2.0))
+                continue
 
-            results = []
-            if tgts:
-                with ThreadPoolExecutor(max_workers=config.WORKERS) as ex:
-                    results = list(ex.map(lambda t: _fetch(session, csrf, t), tgts))
+            # One request in flight, paced by the shared bucket. The calendar
+            # endpoint draws from the same budget.
+            PORTAL_BUCKET.acquire()
+            cell = portal.check_target(session, csrf, targets[key])
+            ok = cell.pop("_transport_ok", True)
 
-            if results and all(not r.get("_transport_ok") for r in results):
+            if not ok:
+                bad += 1
                 csrf = None
-                bad_cycles += 1
-                if bad_cycles >= config.SESSION_RESET_AFTER:
+                if bad >= config.SESSION_RESET_AFTER:
                     session = portal.new_session()
-                    bad_cycles = 0
+                    bad = 0
                 with state.lock:
                     state.stats["error"] = "Portal not responding — refreshing session…"
                 state.mark_changed()
-                time.sleep(min(3 * bad_cycles, 15))
+                # Retry this cell soon rather than losing its turn.
+                with _sched_lock:
+                    _due[key] = time.monotonic() + 5
+                time.sleep(min(3 * (bad or 1), 15))
                 continue
 
-            bad_cycles = 0
-            cycle += 1
+            bad = 0
             with state.lock:
-                for k, cell in zip(keys, results):
-                    cell.pop("_transport_ok", None)
-                    state.board_state[k] = cell
-                state.stats["cycle"] = cycle
+                changed = _significant(state.board_state.get(key), cell)
+                state.board_state[key] = cell
                 state.stats["last_update"] = datetime.now().isoformat()
                 state.stats["error"] = None
-                state.stats["targets"] = len(targets)
-                state.stats["skipped"] = skipped
-                cadence = state.settings["cadence"]
+            reschedule(key, cell)
+            dirty = dirty or changed
 
-            gc_board_state(set(targets.keys()), date.today())
-            state.mark_changed()
-            time.sleep(max(5, cadence))
+            fetched_since_pass += 1
+            if fetched_since_pass >= max(1, len(targets)):
+                cycle += 1
+                fetched_since_pass = 0
+                with state.lock:
+                    state.stats["cycle"] = cycle
+
+            now = time.time()
+            with state.lock:
+                state.stats["skipped"] = len(targets) - due_count(targets)
+                state.stats["behind"] = round(behind_seconds(targets))
+            if dirty and now - last_publish >= config.PUBLISH_MIN_INTERVAL:
+                state.mark_changed()
+                dirty, last_publish, last_heartbeat = False, now, now
+            elif now - last_heartbeat >= config.PUBLISH_HEARTBEAT:
+                # Nothing changed, but let the header's "updated Xs ago" move.
+                state.mark_changed()
+                last_heartbeat = now
+
         except Exception as e:
             print(f"[Worker Error] {e}")
             with state.lock:

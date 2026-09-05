@@ -29,6 +29,8 @@
       <span class="flash" id="flash"></span>
       <span class="mono" style="color:var(--text-dim)" id="updTxt">—</span>
     </div>
+    <button class="btn-sm" id="refreshBtn" title="Check these treks on the portal right now">
+      Refresh now</button>
     {% if user and user.is_admin %}
       <a class="btn-sm" href="{{ url_for('admin.index') }}">Admin</a>
     {% endif %}

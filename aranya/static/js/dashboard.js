@@ -354,6 +354,39 @@ function saveServerSettings(){
   });
 }
 
+/* ---------- force refresh ----------
+   Background polling is slow for cells whose answers can't have changed, so
+   this is the escape hatch when you need live truth. Server enforces the
+   cooldown; this just reflects it. */
+var refreshUntil=0;
+function refreshTick(){
+  var b=document.getElementById('refreshBtn');
+  if(!b)return;
+  var left=Math.ceil((refreshUntil-Date.now())/1000);
+  if(left>0){
+    b.disabled=true;
+    b.textContent='Refresh in '+Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
+  }else{
+    b.disabled=false;
+    b.textContent='Refresh now';
+  }
+}
+function doRefresh(){
+  var b=document.getElementById('refreshBtn');
+  if(!b||b.disabled)return;
+  b.disabled=true;b.textContent='Refreshing…';
+  postJSON('/api/refresh',{})
+    .then(function(r){return r.json().then(function(d){return {status:r.status,body:d};});})
+    .then(function(res){
+      // Both success and 429 carry the cooldown, so the button is honest either way.
+      refreshUntil=Date.now()+((res.body.cooldown||0)*1000);
+      refreshTick();
+    })
+    .catch(function(){b.disabled=false;b.textContent='Refresh now';});
+}
+document.getElementById('refreshBtn').addEventListener('click',doRefresh);
+setInterval(refreshTick,1000);
+
 /* ---------- window segmented control ---------- */
 document.getElementById('winSeg').addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;
