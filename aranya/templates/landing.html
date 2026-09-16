@@ -296,9 +296,14 @@
     </details>
     <details>
       <summary>How do I pay?</summary>
-      <p>Create an account and you'll see the payment instructions. Online
-         card payment is being set up; right now access is enabled manually as
-         soon as payment reaches us, usually within a few hours.</p>
+      {% if billing_live %}
+      <p>Create an account, confirm your email, and pay ₹{{ price }} online by UPI,
+         card, net banking or wallet through Razorpay. Access switches on the moment
+         the payment is confirmed, and a receipt is emailed to you.</p>
+      {% else %}
+      <p>Create an account and you'll see the payment instructions. Access is
+         enabled manually as soon as payment reaches us, usually within a few hours.</p>
+      {% endif %}
     </details>
     <details>
       <summary>Can I share my login with my team?</summary>

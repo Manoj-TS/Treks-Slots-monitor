@@ -151,9 +151,17 @@ def touch_login(user_id: int) -> None:
         conn.execute("UPDATE users SET last_login_at = now() WHERE id = %s", (user_id,))
 
 
-def grant_access(user_id: int, days: int, cap_days: int = 365) -> datetime | None:
-    """Extend access. Stacks onto unexpired access rather than resetting it, so
-    paying early never costs the customer days.
+# The one definition of "add days to access": stacks onto unexpired access
+# rather than resetting it, so paying early never costs the customer days, and
+# never runs further ahead than the cap. Parameters: (days, cap_days).
+EXTEND_ACCESS_SQL = (
+    "LEAST(GREATEST(COALESCE(access_until, now()), now()) + make_interval(days => %s),"
+    " now() + make_interval(days => %s))")
+
+
+def grant_access(user_id: int, days: int,
+                 cap_days: int = config.PAID_ACCESS_CAP_DAYS) -> datetime | None:
+    """Extend access.
 
     `cap_days` guards the payment path: a webhook retry loop must not be able to
     grant years. Admin grants pass a larger cap deliberately, because a
@@ -161,12 +169,18 @@ def grant_access(user_id: int, days: int, cap_days: int = 365) -> datetime | Non
     """
     with db.connection() as conn:
         r = conn.execute(
-            "UPDATE users SET access_until = LEAST("
-            "  GREATEST(COALESCE(access_until, now()), now()) + make_interval(days => %s),"
-            "  now() + make_interval(days => %s))"
+            f"UPDATE users SET access_until = {EXTEND_ACCESS_SQL}"
             " WHERE id = %s RETURNING access_until",
             (days, cap_days, user_id)).fetchone()
     return r[0] if r else None
+
+
+def admin_emails() -> list[str]:
+    """Where operational notices go: every active admin account."""
+    with db.connection() as conn:
+        rows = conn.execute("SELECT email FROM users WHERE is_admin AND status = 'active'"
+                            " ORDER BY id").fetchall()
+    return [r[0] for r in rows]
 
 
 # ── Sessions ──────────────────────────────────────────────────────────────── #

@@ -1,10 +1,16 @@
 {% extends "app_base.html" %}
 {% block title %}Get access · Aranya{% endblock %}
 {% block content %}
-<div class="page-h">Get access</div>
+<div class="page-h">{{ 'Extend your access' if active else 'Get access' }}</div>
 <div class="page-sub">
-  Your account is ready{% if user %} ({{ user.email }}){% endif %} — it just needs
-  access switched on.
+  {% if active %}
+    Your access runs until {{ user.access_until | ist('%d %B %Y') }}. Paying now adds
+    {{ access_days }} days to the end of it — you don't lose any days by paying early.
+  {% elif user %}
+    Your account is ready ({{ user.email }}) — it just needs access switched on.
+  {% else %}
+    Every trek you follow, across the next month of weekends, on one board.
+  {% endif %}
 </div>
 
 <div class="card" style="max-width:520px">
@@ -16,19 +22,50 @@
     One-time payment. No auto-renew, nothing to cancel, no card stored.
   </div>
 
-  <div class="lrow" style="margin-bottom:14px">
-    <div>
-      <span class="nm">Online payment isn't live yet</span>
-      <div class="mt">
-        Email <a href="mailto:{{ support_email }}" style="color:var(--accent)">{{ support_email }}</a>
-        from this address and access is switched on for you, usually within a few
-        hours.
+  {% if online and not user %}
+    <div class="lrow" style="margin-bottom:14px">
+      <div>
+        <span class="nm">Sign in to pay</span>
+        <div class="mt">Access is attached to your account, so you'll need one first.</div>
       </div>
     </div>
-  </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a class="btn" href="{{ url_for('auth.signup') }}">Create an account</a>
+      <a class="btn-sm" href="{{ url_for('auth.login', next='/billing') }}">Sign in</a>
+    </div>
 
-  <a class="btn" href="mailto:{{ support_email }}?subject=Access%20for%20{{ user.email if user else '' }}">
-    Email {{ support_email }}</a>
+  {% elif online and blocker %}
+    <div class="lrow" style="margin-bottom:14px">
+      <div>
+        <span class="nm">Can't take a payment right now</span>
+        <div class="mt">{{ blocker }}</div>
+      </div>
+    </div>
+
+  {% elif online %}
+    <button class="btn" id="payBtn" type="button" data-csrf="{{ csrf }}">
+      {{ 'Add ' ~ access_days ~ ' days — ₹' ~ price if active else 'Pay ₹' ~ price }}</button>
+    <div class="psub" id="payMsg" role="status" aria-live="polite"
+         style="margin-top:12px;min-height:1.2em"></div>
+    <div class="psub" style="margin-top:6px">
+      UPI, cards, net banking and wallets, through Razorpay. Access switches on as
+      soon as the payment is confirmed, and a receipt is emailed to {{ user.email }}.
+    </div>
+
+  {% else %}
+    <div class="lrow" style="margin-bottom:14px">
+      <div>
+        <span class="nm">Online payment isn't available right now</span>
+        <div class="mt">
+          Email <a href="mailto:{{ support_email }}" style="color:var(--accent)">{{ support_email }}</a>
+          from this address and access is switched on for you, usually within a few
+          hours.
+        </div>
+      </div>
+    </div>
+    <a class="btn" href="mailto:{{ support_email }}?subject=Access%20for%20{{ user.email | urlencode if user else '' }}">
+      Email {{ support_email }}</a>
+  {% endif %}
 </div>
 
 <div class="psub" style="margin-top:20px;max-width:520px">
@@ -37,4 +74,78 @@
   <a href="{{ url_for('public.terms') }}" style="color:var(--accent)">terms</a> and
   <a href="{{ url_for('public.refunds') }}" style="color:var(--accent)">refund policy</a>.
 </div>
+
+{% if online and user and not blocker %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+(function () {
+  var btn = document.getElementById('payBtn');
+  var msg = document.getElementById('payMsg');
+  var label = btn.textContent;
+  function say(t) { msg.textContent = t; }
+  function busy(on, text) { btn.disabled = on; btn.textContent = on ? text : label; }
+  function post(url, body) {
+    return fetch(url, {
+      method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': btn.dataset.csrf},
+      body: JSON.stringify(body || {})
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; })
+        .then(function (d) { return {status: r.status, data: d}; });
+    });
+  }
+
+  function confirmPayment(resp) {
+    busy(true, 'Confirming…');
+    say('Payment received — switching your access on…');
+    post('/billing/verify', resp).then(function (res) {
+      if (res.status === 200) {
+        say('Done — your access runs until ' + res.data.until + '. Opening your board…');
+        setTimeout(function () { location.href = '/app'; }, 1500);
+      } else {
+        // 202: still confirming; anything else: a human will sort it out. The
+        // money is safe either way — the server settles it in the background.
+        say(res.data.message || res.data.error ||
+            'Payment received. Access will switch on shortly; you will get an email.');
+        btn.hidden = true;
+      }
+    }).catch(function () {
+      say('Payment received, but we lost the connection confirming it. Access will ' +
+          'switch on within a few minutes — you will get an email. No need to pay again.');
+      btn.hidden = true;
+    });
+  }
+
+  btn.addEventListener('click', function () {
+    busy(true, 'Opening checkout…');
+    say('');
+    post('/billing/order').then(function (res) {
+      if (res.status !== 200) {
+        busy(false);
+        say(res.data.error || 'Could not start the payment. Please try again.');
+        return;
+      }
+      var o = res.data;
+      var rzp = new Razorpay({
+        key: o.key_id, order_id: o.order_id, amount: o.amount, currency: o.currency,
+        name: 'Aranya', description: o.description,
+        prefill: {email: o.email, name: o.name},
+        theme: {color: '#3b82f6'},
+        handler: confirmPayment,
+        modal: {ondismiss: function () { busy(false); }}
+      });
+      rzp.on('payment.failed', function (r) {
+        say('That payment didn’t go through' +
+            (r && r.error && r.error.description ? ': ' + r.error.description : '') +
+            '. You can try again.');
+      });
+      rzp.open();
+    }).catch(function () {
+      busy(false);
+      say('Could not reach the server. Check your connection and try again.');
+    });
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}

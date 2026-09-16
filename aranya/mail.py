@@ -144,6 +144,28 @@ def send_access_granted(to: str, days: int, until: str) -> bool:
     )
 
 
+def send_payment_receipt(to: str, amount_rupees: float, payment_id: str, order_id: str,
+                         days: int, until: str) -> bool:
+    return send(
+        to,
+        "Payment received — your Aranya access is on",
+        f"Thank you. We've received your payment and switched your access on.\n\n"
+        f"Amount:       Rs {amount_rupees:.2f}\n"
+        f"For:          {days} days of access to Aranya\n"
+        f"Access until: {until}\n"
+        f"Payment ID:   {payment_id}\n"
+        f"Order ID:     {order_id}\n\n"
+        f"Open your board: {config.PUBLIC_BASE_URL}/app\n\n"
+        f"This is a one-time payment. Nothing renews and nothing will be charged "
+        f"again unless you choose to pay again. Keep this email as your receipt; "
+        f"for anything about this payment, reply to it or write to "
+        f"{config.SUPPORT_EMAIL} quoting the payment ID.\n\n"
+        f"Aranya is unofficial and not affiliated with the Karnataka Forest "
+        f"Department. This payment buys access to Aranya only, not trek bookings.\n\n"
+        f"— Aranya\n",
+    )
+
+
 def send_account_exists(to: str) -> bool:
     """Sent instead of an error when someone tries to sign up with an address
     that already has an account — avoids leaking which emails are registered."""

@@ -6,7 +6,7 @@ from . import config
 
 bp = Blueprint("public", __name__)
 
-LEGAL_UPDATED = "4 September 2026"
+LEGAL_UPDATED = "16 September 2026"
 
 
 def _ctx(**extra):
@@ -17,6 +17,7 @@ def _ctx(**extra):
             "business_phone": config.BUSINESS_PHONE,
             "business_address": config.BUSINESS_ADDRESS,
             "updated": LEGAL_UPDATED,
+            "billing_live": config.billing_configured(),
             "user": getattr(g, "user", None)}
     base.update(extra)
     return base

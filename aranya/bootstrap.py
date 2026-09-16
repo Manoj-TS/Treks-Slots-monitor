@@ -2,7 +2,7 @@
 
 import threading
 
-from . import config, discovery, security, storage, sweeper
+from . import billing, config, discovery, security, storage, sweeper
 
 _started = False
 
@@ -21,3 +21,4 @@ def start_background():
     threading.Thread(target=discovery.discovery_loop, daemon=True).start()
     threading.Thread(target=sweeper.supervised_worker, daemon=True).start()
     security.start_maintenance()
+    billing.start_reconciler()

@@ -75,6 +75,9 @@ def create_app():
     from . import admin_routes
     app.register_blueprint(admin_routes.bp)
 
+    from . import billing_routes
+    app.register_blueprint(billing_routes.bp)
+
     # Start workers on creation too, so a production WSGI server (e.g. waitress)
     # that imports this module also runs them — not just `python wsgi.py`.
     from . import bootstrap

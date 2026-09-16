@@ -14,7 +14,7 @@ from datetime import timedelta
 from flask import (Blueprint, Response, flash, g, redirect, render_template, request,
                    url_for)
 
-from . import accounts, config, db, health, mail, security, state, storage
+from . import accounts, billing, config, db, health, mail, security, state, storage
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -75,7 +75,9 @@ def index():
                            max_devices=config.MAX_DEVICES,
                            sharing_days=config.SHARING_WINDOW_DAYS,
                            sharing_flag=config.SHARING_FLAG_AT,
-                           alerts_to_ok=config.mail_configured())
+                           alerts_to_ok=config.mail_configured(),
+                           payments=billing.recent_payments(20),
+                           billing_mode=config.billing_mode())
 
 
 @bp.route("/admin/health/sample/<int:sample_id>")

@@ -192,6 +192,41 @@
   </div>
 </div>
 
+<div class="ptitle" style="margin-bottom:10px">Payments
+  <span class="tag {{ {'live': 'tag-open', 'test': 'tag-unrel', 'off': 'tag-sold'}[billing_mode] }}"
+        style="margin-left:6px">online payment: {{ {'live': 'live', 'test': 'TEST MODE',
+                                                     'off': 'off'}[billing_mode] }}</span>
+</div>
+<div class="tbl-wrap" style="margin-bottom:22px">
+  <table class="u-tbl">
+    <thead>
+      <tr><th>When</th><th>Account</th><th>Amount</th><th>Status</th><th>Reference</th></tr>
+    </thead>
+    <tbody>
+    {% for p in payments %}
+      <tr>
+        <td style="white-space:nowrap">{{ p.created | ist('%d %b %H:%M') }}</td>
+        <td><div class="u-em">{{ p.email }}</div>
+          {% if p.until %}<div class="u-mt">access to {{ p.until | ist('%d %b %Y') }}</div>{% endif %}</td>
+        <td class="mono">{% if p.manual %}{{ 'comp' if p.amount == 0 else 'manual' }}{% else %}₹{{ '%.0f' % p.amount }}{% endif %}</td>
+        <td style="white-space:nowrap">
+          <span class="tag {{ {'paid': 'tag-open', 'created': 'tag-unrel',
+                               'failed': 'tag-sold', 'refunded': 'tag-sold'}[p.status] }}">
+            {{ {'created': 'not paid yet', 'failed': 'abandoned'}.get(p.status, p.status) }}</span>
+          {% if p.refunded and p.status != 'refunded' %}
+            <div class="u-mt">₹{{ '%.0f' % p.refunded }} refunded</div>{% endif %}
+          {% if p.problem %}<div class="u-mt">{{ p.problem }}</div>{% endif %}
+        </td>
+        <td class="u-mt mono" style="margin:0">
+          {% if p.manual %}by admin{% else %}{{ p.payment_id or p.order_id }}{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="u-mt">No payments yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
 <div class="ptitle" style="margin-bottom:10px">Accounts</div>
 <div class="tbl-wrap">
   <table class="u-tbl">

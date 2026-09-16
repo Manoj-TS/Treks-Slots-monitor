@@ -126,6 +126,18 @@ MAX_STREAM_SECONDS = int(os.environ.get("MAX_STREAM_SECONDS", "3300"))
 
 ACCESS_DAYS = int(os.environ.get("ACCESS_DAYS", "30"))
 PRICE_RUPEES = int(os.environ.get("PRICE_RUPEES", "99"))
+# Paid access can't run further ahead than this. The checkout refuses a
+# purchase that would cross it, so money is never taken for days that can't be
+# granted.
+PAID_ACCESS_CAP_DAYS = 365
+
+# ── Razorpay ──────────────────────────────────────────────────────────────── #
+# All three, or online payment stays off and /billing shows the email-us page —
+# which also makes unsetting them the kill switch.
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
+MAX_ORDERS_PER_HOUR = 10
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
@@ -150,6 +162,16 @@ BUSINESS_ADDRESS = os.environ.get("BUSINESS_ADDRESS", "")
 
 def mail_configured() -> bool:
     return bool(SMTP_USER and SMTP_PASSWORD)
+
+
+def billing_configured() -> bool:
+    return bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET and RAZORPAY_WEBHOOK_SECRET)
+
+
+def billing_mode() -> str:
+    if not billing_configured():
+        return "off"
+    return "test" if RAZORPAY_KEY_ID.startswith("rzp_test_") else "live"
 
 
 def auth_configured() -> bool:

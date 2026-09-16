@@ -33,17 +33,6 @@ def index():
                            csrf=security.csrf_token())
 
 
-@bp.route("/billing")
-def billing_placeholder():
-    """Stands in until real billing lands, so a signed-up user sees something
-    coherent instead of a dead link."""
-    return render_template("billing.html", user=getattr(g, "user", None),
-                           support_email=config.SUPPORT_EMAIL,
-                           price=config.PRICE_RUPEES,
-                           access_days=config.ACCESS_DAYS,
-                           csrf=security.csrf_token())
-
-
 @bp.route("/api/meta")
 @security.paid_required
 def api_meta():

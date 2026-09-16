@@ -12,10 +12,14 @@ nothing to download or install.</p>
 
 <h2>Timing</h2>
 <ul>
-  <li><strong>Automatic payments:</strong> access is enabled immediately on confirmation.</li>
-  <li><strong>Manual payments:</strong> while online card payment is being set up,
-      access is enabled by hand after payment reaches us, usually within a few
-      hours and always within one business day.</li>
+  <li><strong>Online payments</strong> (through Razorpay): access is enabled
+      immediately once the payment is confirmed, and a receipt is emailed to you.
+      In the rare case a bank takes longer to confirm, access is enabled
+      automatically within a few minutes of confirmation.</li>
+  <li><strong>Payments arranged directly with us</strong>{% if not billing_live %}
+      (currently the only way to pay){% endif %}: access is enabled by hand after
+      payment reaches us, usually within a few hours and always within one
+      business day.</li>
 </ul>
 
 <h2>If access does not appear</h2>
@@ -26,5 +30,5 @@ full. See the <a href="{{ url_for('public.refunds') }}">Refund &amp; Cancellatio
 <h2>Duration</h2>
 <p>Access runs for {{ access_days }} days from the moment it is enabled. If you pay again while
 access is still active, the new days are added to the end of your existing period,
-so you never lose days by paying early.</p>
+so you never lose days by paying early. Access can be bought up to one year ahead.</p>
 {% endblock %}

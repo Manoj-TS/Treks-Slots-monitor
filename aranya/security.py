@@ -307,9 +307,7 @@ def paid_required(f):
     @verified_required
     def wrapper(*a, **kw):
         if not g.user.has_access:
-            # Literal path, not url_for: the billing blueprint lands in a later
-            # phase and url_for would raise BuildError until then.
-            return _deny("This needs an active subscription.", 402, "/billing")
+            return _deny("This needs active access.", 402, url_for("billing.page"))
         return f(*a, **kw)
     return wrapper
 

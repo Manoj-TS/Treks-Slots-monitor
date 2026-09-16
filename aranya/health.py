@@ -31,7 +31,7 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-from . import config, db, mail, state, storage
+from . import accounts, config, db, mail, state, storage
 from .portal import ANSWERS
 
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -487,11 +487,7 @@ def _recipients() -> list[str]:
     out = []
     if storage.db_ready():
         try:
-            with db.connection() as conn:
-                rows = conn.execute(
-                    "SELECT email FROM users WHERE is_admin AND status = 'active'"
-                    " ORDER BY id").fetchall()
-            out = [r[0] for r in rows]
+            out = accounts.admin_emails()
         except Exception as e:
             print(f"[Health] could not load admin emails: {e}")
     if config.ALERT_EMAIL:
