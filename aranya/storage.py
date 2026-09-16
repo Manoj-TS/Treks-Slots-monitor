@@ -55,10 +55,18 @@ def write_trek_configs(cfgs: dict) -> None:
                  cfg.get("timeslot_mapping_id"), cfg.get("timeslot_id")))
 
 
+def clamp_cadence(seconds: int) -> int:
+    """The one definition of an acceptable open-slot interval. See the note on
+    config.OPEN_INTERVAL_MIN for why the floor is not negotiable at runtime."""
+    return max(config.OPEN_INTERVAL_MIN, min(config.OPEN_INTERVAL_MAX, int(seconds)))
+
+
 def read_cadence() -> int:
     with db.connection() as conn:
         r = conn.execute("SELECT value FROM app_settings WHERE key = 'cadence'").fetchone()
-    return int(r[0]) if r else config.BOARD_CYCLE_DEFAULT
+    # Clamped on the way out too: a row written before the floor existed, or by
+    # hand with psql, must not outrank it.
+    return clamp_cadence(r[0]) if r else config.BOARD_CYCLE_DEFAULT
 
 
 def write_cadence(seconds: int) -> None:
@@ -66,7 +74,7 @@ def write_cadence(seconds: int) -> None:
         conn.execute(
             "INSERT INTO app_settings (key, value) VALUES ('cadence', %s)"
             " ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
-            (json.dumps(int(seconds)),))
+            (json.dumps(clamp_cadence(seconds)),))
 
 
 # ── Per-user reads ────────────────────────────────────────────────────────── #

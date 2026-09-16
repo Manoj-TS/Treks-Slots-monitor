@@ -88,13 +88,18 @@
       unreleased dates are polled far more slowly, since their answers can't
       change until the next daily release. Global, not per-user — one account
       must not set how hard everyone polls the portal.
+      <br><br>
+      Won't go below {{ cadence_min }}s. A tighter interval is the one setting
+      that can get this server blocked by the portal, and a block shows every
+      paying customer an empty board — worse than a number two minutes old.
     </div>
     <form method="post" action="{{ url_for('admin.set_cadence') }}">
       <input type="hidden" name="_csrf" value="{{ csrf }}">
       <div class="row">
         <div style="flex:1">
           <label class="fld">Seconds between checks</label>
-          <input type="number" name="cadence" min="20" max="900" value="{{ cadence }}">
+          <input type="number" name="cadence" min="{{ cadence_min }}"
+                 max="{{ cadence_max }}" value="{{ cadence }}">
         </div>
         <div style="flex:0;align-self:flex-end">
           <button class="btn-sm" type="submit">Apply</button>

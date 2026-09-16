@@ -54,6 +54,8 @@ def index():
         cadence = state.settings["cadence"]
     return render_template("admin.html", users=_list_users(), stats=stats,
                            cadence=cadence, csrf=security.csrf_token(),
+                           cadence_min=config.OPEN_INTERVAL_MIN,
+                           cadence_max=config.OPEN_INTERVAL_MAX,
                            access_days=config.ACCESS_DAYS,
                            price=config.PRICE_RUPEES,
                            db_ready=storage.db_ready())
@@ -161,12 +163,20 @@ def revoke():
 @security.admin_required
 def set_cadence():
     try:
-        seconds = max(20, min(900, int(request.form.get("cadence"))))
+        asked = int(request.form.get("cadence"))
     except (TypeError, ValueError):
         flash("Cadence must be a number.", "error")
         return redirect(url_for("admin.index"))
+
+    seconds = storage.clamp_cadence(asked)
     storage.write_cadence(seconds)
     with state.lock:
         state.settings["cadence"] = seconds
-    flash(f"Sweep interval set to {seconds}s.", "ok")
+    if seconds != asked:
+        flash(f"Sweep interval set to {seconds}s — {asked}s is outside the "
+              f"allowed {config.OPEN_INTERVAL_MIN}–{config.OPEN_INTERVAL_MAX}s "
+              f"range. Polling the portal harder than this risks the block that "
+              f"empties the board for everyone.", "ok")
+    else:
+        flash(f"Sweep interval set to {seconds}s.", "ok")
     return redirect(url_for("admin.index"))

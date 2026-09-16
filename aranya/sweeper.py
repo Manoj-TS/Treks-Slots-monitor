@@ -52,7 +52,8 @@ def _interval_for(cell) -> float:
     if cell.get("available", 0) <= 0:
         return config.SOLD_OUT_INTERVAL              # terminal; poll for corrections
     with state.lock:
-        return max(20, int(state.settings["cadence"]))   # open: the live number
+        # open: the live number, never below the floor
+        return max(config.OPEN_INTERVAL_MIN, int(state.settings["cadence"]))
 
 
 def reschedule(key: str, cell) -> None:

@@ -4,7 +4,7 @@ import os
 
 BASE = "https://aranyavihaara.karnataka.gov.in"
 WORKERS = 8
-BOARD_CYCLE_DEFAULT = 40           # seconds between sweeps (display, not a race)
+BOARD_CYCLE_DEFAULT = 120          # seconds between sweeps (display, not a race)
 WINDOW_DAYS_DEFAULT = 30           # portal opens bookings up to 30 days ahead
 SESSION_RESET_AFTER = 4
 
@@ -25,6 +25,19 @@ VIEW_RELOAD_SECONDS = int(os.environ.get("VIEW_RELOAD_SECONDS", "60"))
 # app_settings, so it stays adjustable from /admin without a deploy.
 SOLD_OUT_INTERVAL = int(os.environ.get("SOLD_OUT_INTERVAL", "1800"))
 UNRELEASED_INTERVAL = int(os.environ.get("UNRELEASED_INTERVAL", "1800"))
+
+# Floor under the operator-set cadence, enforced on write (storage.write_cadence)
+# and again on read (sweeper._interval_for), so no stored value, form post or
+# legacy import can poll open cells faster than this.
+#
+# This is deliberately not a matter of taste. A tight interval is the one knob
+# that can get this IP blocked by the portal, and a block means every paying
+# customer sees an empty board — worse than data that is two minutes old. Two
+# minutes is already far tighter than the portal's own release cycle. Lowering
+# it is possible but has to be a conscious act with a deploy behind it, not a
+# number left in a form field.
+OPEN_INTERVAL_MIN = int(os.environ.get("OPEN_INTERVAL_MIN", "120"))
+OPEN_INTERVAL_MAX = int(os.environ.get("OPEN_INTERVAL_MAX", "900"))
 
 # Republish to connected viewers at most this often, and at least this often.
 # The floor stops a drip from invalidating every viewer's payload cache several
