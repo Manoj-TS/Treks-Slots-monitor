@@ -42,6 +42,44 @@
   </div>
 </div>
 
+<div class="card" style="max-width:620px;margin-top:16px">
+  <div class="ptitle">Signed-in devices</div>
+  <div class="psub">
+    {% if user.is_admin %}
+      Administrator accounts have no device limit.
+    {% else %}
+      Your account can be signed in on {{ max_devices }} devices at once. Signing in on
+      another signs out the one used least recently.
+    {% endif %}
+  </div>
+  {% for d in devices %}
+  <div class="lrow" style="margin-bottom:8px">
+    <div>
+      <span class="nm">{{ d.device }}</span>
+      {% if d.current %}<span class="tag tag-open">this device</span>{% endif %}
+      <div class="mt">
+        Last used {{ d.last_seen | ist }} IST
+        · signed in {{ d.created | ist('%d %b') }}
+      </div>
+    </div>
+    {% if not d.current %}
+    <form method="post" action="{{ url_for('auth.end_sessions') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <input type="hidden" name="session" value="{{ d.id }}">
+      <button class="btn-sm" type="submit">Sign out</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% if devices | length > 1 %}
+  <form method="post" action="{{ url_for('auth.end_sessions') }}" style="margin-top:6px">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <input type="hidden" name="session" value="others">
+    <button class="btn-sm btn-danger" type="submit">Sign out all other devices</button>
+  </form>
+  {% endif %}
+</div>
+
 <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
   {% if user.has_access or user.is_admin %}
     <a class="btn" href="/app">Open your board</a>

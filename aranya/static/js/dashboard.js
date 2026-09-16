@@ -454,10 +454,22 @@ document.getElementById('winSeg').addEventListener('click',function(e){
 });
 
 /* ---------- live link ---------- */
-var lastEventAt=0;
+var lastEventAt=0,leaving=false;
+/* The server ends the stream with a named event when this board should no
+   longer be shown. Without handling them the browser just reconnects, gets a
+   401/402, and leaves a stale board on screen behind a grey dot. */
+function leave(url){if(leaving)return;leaving=true;location.href=url;}
+function authGate(r){
+  if(r.status===401){leave('/signed-out');throw new Error('signed out');}
+  if(r.status===402){leave('/billing');throw new Error('no access');}
+  return r.json();
+}
 function connectStream(){var es=new EventSource('/api/stream');
   es.onmessage=function(ev){lastEventAt=Date.now();try{render(JSON.parse(ev.data));}catch(e){}};
+  es.addEventListener('signed-out',function(){es.close();leave('/signed-out');});
+  es.addEventListener('expired',function(){es.close();leave('/billing');});
+  es.addEventListener('reconnect',function(){es.close();setTimeout(connectStream,500);});
   es.onerror=function(){document.getElementById('dot').className='dot dead';};}
-function pollFallback(){if(Date.now()-lastEventAt>20000){fetch('/api/state').then(function(r){return r.json();}).then(render).catch(function(){var d=document.getElementById('dot');d.className='dot dead';document.getElementById('statusTxt').textContent='Server unreachable';});}}
+function pollFallback(){if(leaving)return;if(Date.now()-lastEventAt>20000){fetch('/api/state').then(authGate).then(render).catch(function(e){if(leaving)return;var d=document.getElementById('dot');d.className='dot dead';document.getElementById('statusTxt').textContent='Server unreachable';});}}
 connectStream();setInterval(pollFallback,5000);
-fetch('/api/state').then(function(r){return r.json();}).then(render);
+fetch('/api/state').then(authGate).then(render).catch(function(){});

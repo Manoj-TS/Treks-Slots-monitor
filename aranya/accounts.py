@@ -26,6 +26,34 @@ def _hash(token: str) -> bytes:
     return hashlib.sha256(token.encode("utf-8")).digest()
 
 
+token_hash = _hash
+
+
+def device_label(user_agent: str | None) -> str:
+    """'Chrome on Android' — enough for a person to recognise their own
+    device, without a user-agent parsing dependency. Order matters: Edge and
+    Opera announce themselves as Chrome too, and Chrome as Safari."""
+    ua = user_agent or ""
+    browser = "Browser"
+    for needle, name in (("Edg/", "Edge"), ("OPR/", "Opera"),
+                         ("SamsungBrowser", "Samsung Internet"),
+                         ("Firefox/", "Firefox"), ("FxiOS", "Firefox"),
+                         ("CriOS", "Chrome"), ("Chrome/", "Chrome"),
+                         ("Safari/", "Safari")):
+        if needle in ua:
+            browser = name
+            break
+    system = None
+    for needle, name in (("iPhone", "iPhone"), ("iPad", "iPad"),
+                         ("Android", "Android"), ("Windows", "Windows"),
+                         ("Mac OS X", "Mac"), ("CrOS", "ChromeOS"),
+                         ("Linux", "Linux")):
+        if needle in ua:
+            system = name
+            break
+    return f"{browser} on {system}" if system else browser
+
+
 @dataclass(frozen=True)
 class User:
     id: int
@@ -143,18 +171,47 @@ def grant_access(user_id: int, days: int, cap_days: int = 365) -> datetime | Non
 
 # ── Sessions ──────────────────────────────────────────────────────────────── #
 
-def create_session(user_id: int, ip: str | None = None, user_agent: str | None = None
-                   ) -> tuple[str, str]:
-    """Returns (session_token, csrf_token). Only hashes are persisted."""
+def create_session(user_id: int, ip: str | None = None, user_agent: str | None = None,
+                   max_sessions: int | None = None) -> tuple[str, str, list[bytes]]:
+    """Returns (session_token, csrf_token, ended_hashes). Only hashes are persisted.
+
+    With `max_sessions`, the newest sign-in always succeeds and the least
+    recently used sessions beyond the limit are ended in the same transaction
+    ("last device wins"). Refusing the new sign-in instead would lock a
+    customer out of their own account whenever they forgot to sign out of a
+    borrowed laptop, and would be no harder to share around.
+
+    The user row is locked first, so two sign-ins racing each other can't both
+    count the same survivors and leave three sessions standing.
+    """
     token = secrets.token_urlsafe(32)
     csrf = secrets.token_urlsafe(32)
     expires = utcnow() + timedelta(days=config.SESSION_DAYS)
+    ua = (user_agent or "")[:500]
+    ended: list[bytes] = []
     with db.connection() as conn:
+        if max_sessions:
+            conn.execute("SELECT 1 FROM users WHERE id = %s FOR UPDATE", (user_id,))
+            rows = conn.execute(
+                "SELECT token_hash, user_agent FROM sessions"
+                " WHERE user_id = %s AND expires_at > now()"
+                " ORDER BY last_seen_at DESC, created_at DESC",
+                (user_id,)).fetchall()
+            by = device_label(ua)
+            for th, old_ua in rows[max(0, max_sessions - 1):]:
+                th = bytes(th)
+                conn.execute("DELETE FROM sessions WHERE token_hash = %s", (th,))
+                conn.execute(
+                    "INSERT INTO session_revocations"
+                    " (token_hash, user_id, reason, ended_device, by_device, by_ip)"
+                    " VALUES (%s, %s, 'device_limit', %s, %s, %s)",
+                    (th, user_id, device_label(old_ua), by, ip))
+                ended.append(th)
         conn.execute(
             "INSERT INTO sessions (token_hash, user_id, csrf_token, expires_at, ip, user_agent)"
             " VALUES (%s, %s, %s, %s, %s, %s)",
-            (_hash(token), user_id, csrf, expires, ip, (user_agent or "")[:500]))
-    return token, csrf
+            (_hash(token), user_id, csrf, expires, ip, ua))
+    return token, csrf, ended
 
 
 def lookup_session(token: str) -> tuple[User, str] | None:
@@ -172,20 +229,81 @@ def lookup_session(token: str) -> tuple[User, str] | None:
     return _row_to_user(r[1:]), r[0]
 
 
-def touch_session(token: str) -> None:
+def touch_sessions(seen: dict[bytes, float]) -> None:
+    """Write buffered last-seen times (token_hash -> unix time) in one query.
+    Never moves a time backwards, so a late flush can't undo a newer one."""
+    if not seen:
+        return
+    hashes = list(seen.keys())
+    times = [seen[h] for h in hashes]
     with db.connection() as conn:
-        conn.execute("UPDATE sessions SET last_seen_at = now() WHERE token_hash = %s",
-                     (_hash(token),))
+        conn.execute(
+            "UPDATE sessions s SET last_seen_at = to_timestamp(v.t)"
+            " FROM unnest(%s::bytea[], %s::float8[]) AS v(h, t)"
+            " WHERE s.token_hash = v.h AND s.last_seen_at < to_timestamp(v.t)",
+            (hashes, times))
+
+
+def list_sessions(user_id: int) -> list[dict]:
+    with db.connection() as conn:
+        rows = conn.execute(
+            "SELECT token_hash, created_at, last_seen_at, user_agent FROM sessions"
+            " WHERE user_id = %s AND expires_at > now()"
+            " ORDER BY last_seen_at DESC, created_at DESC", (user_id,)).fetchall()
+    return [{"hash": bytes(r[0]), "created": r[1], "last_seen": r[2],
+             "device": device_label(r[3])} for r in rows]
 
 
 def revoke_session(token: str) -> None:
+    """A voluntary sign-out. Not recorded: the device ended its own session."""
     with db.connection() as conn:
         conn.execute("DELETE FROM sessions WHERE token_hash = %s", (_hash(token),))
 
 
-def revoke_all_sessions(user_id: int) -> None:
+def revoke_sessions(user_id: int, reason: str, only: list[bytes] | None = None,
+                    keep: bytes | None = None, by_device: str | None = None,
+                    by_ip: str | None = None) -> list[bytes]:
+    """End some or all of a user's sessions on their behalf, recording why, so
+    the device that was signed out can be told. Returns the hashes ended.
+
+    `only` restricts to those sessions; `keep` spares one (the device doing
+    the signing-out)."""
     with db.connection() as conn:
-        conn.execute("DELETE FROM sessions WHERE user_id = %s", (user_id,))
+        rows = conn.execute(
+            "DELETE FROM sessions WHERE user_id = %s"
+            "   AND (%s::bytea[] IS NULL OR token_hash = ANY(%s::bytea[]))"
+            "   AND (%s::bytea IS NULL OR token_hash <> %s::bytea)"
+            " RETURNING token_hash, user_agent",
+            (user_id, only, only, keep, keep)).fetchall()
+        for th, ua in rows:
+            conn.execute(
+                "INSERT INTO session_revocations"
+                " (token_hash, user_id, reason, ended_device, by_device, by_ip)"
+                " VALUES (%s, %s, %s, %s, %s, %s)",
+                (bytes(th), user_id, reason, device_label(ua), by_device, by_ip))
+    return [bytes(r[0]) for r in rows]
+
+
+def revoke_all_sessions(user_id: int, reason: str = "password_reset") -> list[bytes]:
+    return revoke_sessions(user_id, reason)
+
+
+def find_revocation(th: bytes) -> dict | None:
+    """Why this (now missing) session was ended, if it was ended for the user."""
+    with db.connection() as conn:
+        r = conn.execute(
+            "SELECT reason, revoked_at, by_device FROM session_revocations"
+            " WHERE token_hash = %s ORDER BY revoked_at DESC LIMIT 1", (th,)).fetchone()
+    if not r:
+        return None
+    return {"reason": r[0], "at": r[1].isoformat(), "by": r[2]}
+
+
+def purge_old_revocations(days: int = 90) -> int:
+    with db.connection() as conn:
+        cur = conn.execute("DELETE FROM session_revocations"
+                           " WHERE revoked_at < now() - make_interval(days => %s)", (days,))
+        return cur.rowcount
 
 
 def purge_expired_sessions() -> int:

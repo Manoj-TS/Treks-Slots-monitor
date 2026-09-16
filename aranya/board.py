@@ -5,7 +5,7 @@ import json
 import threading
 from datetime import date, timedelta
 
-from . import config, state, views
+from . import config, health, state, views
 
 # ── Weekend window helpers ────────────────────────────────────────────────── #
 
@@ -78,6 +78,9 @@ def build_state_for(view) -> dict:
     cols = weekend_columns(view.window_days)
     isos = [c["iso"] for c in cols]
     today = date.today()
+    # Before taking state.lock: health takes that lock itself while evaluating,
+    # so reading it inside this block would invert the order.
+    notice = health.customer_notice()
 
     with state.lock:
         rows = []
@@ -99,7 +102,10 @@ def build_state_for(view) -> dict:
                           "date": w.date,
                           "cell": state.board_state.get(f"{w.trek_id}_{w.date}")})
         # `error` is a global fault (portal down); `hint` is about this user.
-        error = state.stats["error"] or state.registry["error"]
+        # A confirmed health problem outranks the sweeper's transient message:
+        # when pages stop parsing, fetches "succeed" and that message is empty,
+        # which is exactly when the customer most needs telling.
+        error = notice or state.stats["error"] or state.registry["error"]
         stats_snapshot = {"cycle": state.stats["cycle"],
                           "last_update": state.stats["last_update"],
                           "content_version": state.stats["content_version"],

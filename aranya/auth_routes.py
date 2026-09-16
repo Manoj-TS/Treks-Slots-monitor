@@ -2,7 +2,7 @@
 
 import re
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import (Blueprint, flash, g, redirect, render_template, request,
                    session, url_for)
@@ -13,6 +13,7 @@ bp = Blueprint("auth", __name__)
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD = 8
+IST = timezone(timedelta(hours=5, minutes=30))
 
 # email -> [failure timestamps]. In-process and resets on deploy, which is
 # acceptable at this scale; nginx rate-limits /login as a second layer.
@@ -41,10 +42,18 @@ def _abs_url(path: str) -> str:
     return f"{config.PUBLIC_BASE_URL}{path}"
 
 
+def _client_ip():
+    return request.headers.get("X-Real-IP") or request.remote_addr
+
+
 def _start_session(user, response):
-    token, csrf = accounts.create_session(
-        user.id, ip=request.headers.get("X-Real-IP") or request.remote_addr,
-        user_agent=request.headers.get("User-Agent"))
+    # Write buffered last-seen times first: the device limit picks the least
+    # recently used session, and that has to be decided on current data.
+    security.flush_seen()
+    token, csrf, ended = accounts.create_session(
+        user.id, ip=_client_ip(), user_agent=request.headers.get("User-Agent"),
+        max_sessions=None if user.is_admin else config.MAX_DEVICES)
+    security.revoke_tokens(ended, "device_limit")
     accounts.touch_login(user.id)
     secure = config.PUBLIC_BASE_URL.startswith("https://")
     max_age = config.SESSION_DAYS * 24 * 3600
@@ -171,6 +180,8 @@ def logout():
     token = getattr(g, "session_token", None)
     if token:
         security.evict(token)
+        # Also ends the board stream in any other tab on this device.
+        security.revoke_tokens([accounts.token_hash(token)], "logout")
         try:
             accounts.revoke_session(token)
         except Exception as e:
@@ -225,7 +236,13 @@ def reset():
 
     accounts.set_password(user_id, password)
     accounts.mark_verified(user_id)          # proves control of the mailbox
-    accounts.revoke_all_sessions(user_id)    # log out everywhere
+    # Log out everywhere — including boards already open, which is what the
+    # in-memory revocation is for. Deleting the rows alone left those running.
+    ended = accounts.revoke_sessions(
+        user_id, "password_reset",
+        by_device=accounts.device_label(request.headers.get("User-Agent")),
+        by_ip=_client_ip())
+    security.revoke_tokens(ended, "password_reset")
     security.evict_user(user_id)
     user = accounts.get_user(user_id)
     mail.send_password_changed(user.email)
@@ -285,4 +302,68 @@ def google_callback():
 @bp.route("/account")
 @security.login_required
 def account():
-    return render_template("auth/account.html", user=g.user, csrf=security.csrf_token())
+    security.flush_seen()
+    here = accounts.token_hash(g.session_token)
+    devices = accounts.list_sessions(g.user.id)
+    for d in devices:
+        d["current"] = d["hash"] == here
+        d["id"] = d["hash"].hex()
+    return render_template("auth/account.html", user=g.user, csrf=security.csrf_token(),
+                           devices=devices, max_devices=config.MAX_DEVICES)
+
+
+@bp.route("/account/sessions/end", methods=["POST"])
+@security.login_required
+def end_sessions():
+    """Sign out one other device, or all of them. Never this one — that is
+    what the ordinary Sign out button is for."""
+    here = accounts.token_hash(g.session_token)
+    which = request.form.get("session") or ""
+    only = None
+    if which != "others":
+        try:
+            only = [bytes.fromhex(which)]
+        except ValueError:
+            flash("Couldn't find that device.", "error")
+            return redirect(url_for("auth.account"))
+    ended = accounts.revoke_sessions(
+        g.user.id, "signed_out_remotely", only=only, keep=here,
+        by_device=accounts.device_label(request.headers.get("User-Agent")),
+        by_ip=_client_ip())
+    security.revoke_tokens(ended, "signed_out_remotely")
+    if ended:
+        flash(f"Signed out {len(ended)} device{'s' if len(ended) != 1 else ''}.", "ok")
+    else:
+        flash("No other devices were signed in.", "ok")
+    return redirect(url_for("auth.account"))
+
+
+_SIGNED_OUT_REASONS = {
+    "device_limit": "Your account was signed in on another device",
+    "password_reset": "The password on this account was changed",
+    "signed_out_remotely": "You were signed out from another device",
+    "admin": "An administrator signed this account out",
+}
+
+
+@bp.route("/signed-out")
+def signed_out():
+    """Where a device lands when its session was ended for it. Reads the
+    reason from this request's dead cookie if it is still there (the board's
+    live stream sends the browser straight here), else from what the redirect
+    stashed."""
+    info = session.pop("signed_out", None) or getattr(g, "signed_out", None) or {}
+    if g.user:
+        return redirect(url_for("main.index"))
+    reason = info.get("reason")
+    at = info.get("at")
+    when = None
+    if at:
+        try:
+            when = datetime.fromisoformat(at).astimezone(IST).strftime("%d %b, %H:%M IST")
+        except ValueError:
+            when = None
+    return render_template("auth/signed_out.html",
+                           headline=_SIGNED_OUT_REASONS.get(reason, "You've been signed out"),
+                           reason=reason, by=info.get("by"), when=when,
+                           max_devices=config.MAX_DEVICES)

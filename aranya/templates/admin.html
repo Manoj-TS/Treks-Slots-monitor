@@ -26,6 +26,18 @@
   .adm-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:22px;
     align-items:start}
   @media(max-width:820px){ .adm-grid{grid-template-columns:1fr} }
+  .hb{border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;line-height:1.5;
+    border:1px solid color-mix(in srgb,var(--danger) 45%,var(--border));
+    background:color-mix(in srgb,var(--danger) 10%,var(--surface))}
+  .hb.watch{border-color:color-mix(in srgb,var(--warn) 45%,var(--border));
+    background:color-mix(in srgb,var(--warn) 9%,var(--surface))}
+  .hb h3{margin:0 0 4px;font-size:.95rem;color:var(--text-bright)}
+  .hb p{margin:4px 0;font-size:.82rem}
+  .hb .adv{color:var(--text-dim);font-size:.78rem}
+  .h-list{font-size:.8rem;margin:0;padding:0;list-style:none}
+  .h-list li{padding:7px 0;border-bottom:1px solid var(--border)}
+  .h-list li:last-child{border-bottom:none}
+  .mono{font-family:var(--font-mono)}
 </style>
 {% endblock %}
 
@@ -33,6 +45,23 @@
 <div class="page-h">Operator console</div>
 <div class="page-sub">Give access after taking payment however you like. Every grant is
   written to the payments ledger, including free ones.</div>
+
+{% for p in health.problems %}
+<div class="hb {{ '' if p.confirmed else 'watch' }}">
+  <h3>{{ p.title }}{% if not p.confirmed %} — watching{% endif %}</h3>
+  <p>{{ p.detail }}</p>
+  <p>Since {{ p.since | ist('%d %b, %H:%M') }} IST.
+    {% if p.confirmed %}
+      {{ 'Admins have been emailed.' if p.alerted else 'Emailing admins.' }}
+      Customers' boards are showing a warning.
+    {% else %}
+      Not yet confirmed — nobody is emailed and customers see nothing unless it lasts.
+    {% endif %}
+    {% if p.sample_id %}<a href="{{ url_for('admin.health_sample', sample_id=p.sample_id) }}"
+      target="_blank" rel="noopener">View the page that failed</a>{% endif %}</p>
+  <p class="adv">{{ p.advice }}</p>
+</div>
+{% endfor %}
 
 <div class="stat-strip">
   <span class="s">sweep <b>{{ stats.cycle }}</b></span>
@@ -46,6 +75,9 @@
     <b>{{ 'alive' if stats.worker_alive else 'DOWN' }}</b></span>
   <span class="s {{ '' if db_ready else 'bad' }}">database
     <b>{{ 'ok' if db_ready else 'DOWN' }}</b></span>
+  <span class="s {{ 'bad' if health.status == 'problem' else '' }}">portal
+    <b>{{ {'ok': 'ok', 'idle': 'idle', 'watching': 'watching',
+           'problem': 'PROBLEM'}[health.status] }}</b></span>
   <span class="s">users <b>{{ users | length }}</b></span>
 </div>
 
@@ -109,13 +141,66 @@
   </div>
 </div>
 
+<div class="adm-grid">
+  <div class="card">
+    <div class="ptitle">Portal health</div>
+    <div class="psub">
+      Every response from the portal is sorted into a page we can read, or a reason
+      we couldn't. Last {{ health.window_min }} min: <b class="mono">{{ health.total }}</b>
+      responses{% if health.total %} —
+      {% for k, v in health.counts | dictsort %}{{ k }} <b class="mono">{{ v }}</b>{{ ', ' if not loop.last }}{% endfor %}{% endif %}.
+      Last readable page {{ health.last_answer }}.
+      {% if health.streak %}<b>{{ health.streak }}</b> failures in a row.{% endif %}
+      {% if not alerts_to_ok %}<br><b>Mail isn't configured, so alerts can't be emailed</b> —
+      this page is the only place they show.{% endif %}
+    </div>
+    <div class="ptitle" style="font-size:.8rem;margin-top:10px">Recent incidents</div>
+    {% if incidents %}
+    <ul class="h-list">
+      {% for e in incidents %}
+      <li><b>{{ e.title }}</b> ·
+        {{ e.started | ist('%d %b %H:%M') }}
+        {% if e.ended %}– {{ e.ended | ist('%H:%M') }}{% else %}<span class="tag tag-sold">ongoing</span>{% endif %}
+        {% if e.alerted %}· emailed{% endif %}
+        <div class="u-mt">{{ e.detail }}</div></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="u-mt">None recorded.</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="ptitle">Saved pages</div>
+    <div class="psub">Portal responses that couldn't be read, kept for diagnosis
+      (newest {{ samples | length }}). Shown as plain text.</div>
+    {% if samples %}
+    <ul class="h-list">
+      {% for s in samples %}
+      <li><a href="{{ url_for('admin.health_sample', sample_id=s.id) }}" target="_blank"
+             rel="noopener">#{{ s.id }} {{ s.kind }}</a>
+        · {{ s.outcome }}{% if s.status %} · HTTP {{ s.status }}{% endif %}
+        <div class="u-mt">{{ s.captured | ist('%d %b %H:%M') }}
+          {%- if s.trek_id %} · trek {{ s.trek_id }}{% endif %}
+          {%- if s.date %} · {{ s.date }}{% endif %}
+          {%- if s.note %} · {{ s.note }}{% endif %}</div></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="u-mt">Nothing saved.</div>
+    {% endif %}
+  </div>
+</div>
+
 <div class="ptitle" style="margin-bottom:10px">Accounts</div>
 <div class="tbl-wrap">
   <table class="u-tbl">
     <thead>
       <tr>
         <th>Account</th><th>Status</th><th>Access until</th>
-        <th style="text-align:center">Treks</th><th>Actions</th>
+        <th style="text-align:center">Treks</th>
+        <th title="Signed-in devices now / sign-ins that pushed another device out in the last {{ sharing_days }} days">Devices</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -146,6 +231,15 @@
           {% endif %}
         </td>
         <td style="text-align:center">{{ u.favourites }}</td>
+        <td style="white-space:nowrap">
+          <span class="mono">{{ u.sessions }}{% if not u.is_admin %}/{{ max_devices }}{% endif %}</span>
+          {% if u.pushed_out %}
+            <div class="u-mt">{{ u.pushed_out }} pushed out ({{ sharing_days }}d)</div>
+          {% endif %}
+          {% if u.pushed_out >= sharing_flag %}
+            <span class="tag tag-sold" title="Frequent sign-ins displacing another device usually means the account is being shared">likely shared</span>
+          {% endif %}
+        </td>
         <td>
           {% if u.is_admin %}
             <span class="u-mt" style="margin:0">—</span>
@@ -159,6 +253,14 @@
               <input type="text" name="note" placeholder="note" title="Optional note">
               <button class="btn-sm" type="submit">Grant</button>
             </form>
+            {% if u.sessions %}
+            <form method="post" action="{{ url_for('admin.signout_user') }}"
+                  onsubmit="return confirm('Sign this account out of every device?')">
+              <input type="hidden" name="_csrf" value="{{ csrf }}">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <button class="btn-sm" type="submit">Sign out</button>
+            </form>
+            {% endif %}
             {% if u.access_until %}
             <form method="post" action="{{ url_for('admin.revoke') }}">
               <input type="hidden" name="_csrf" value="{{ csrf }}">

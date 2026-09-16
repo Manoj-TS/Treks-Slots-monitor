@@ -9,7 +9,8 @@ from datetime import date, datetime, timedelta
 from flask import (Blueprint, Response, g, jsonify, redirect, render_template,
                    request, url_for)
 
-from . import board, config, portal, security, state, storage, sweeper, views
+from . import (accounts, board, config, health, portal, security, state, storage,
+               sweeper, views)
 
 bp = Blueprint("main", __name__)
 
@@ -66,12 +67,20 @@ def api_state():
 @security.paid_required
 def api_stream():
     uid = g.user.id
+    th = accounts.token_hash(g.session_token)
     deadline = time.time() + config.MAX_STREAM_SECONDS
 
     def gen():
-        last, last_sent = None, 0.0
+        last, last_sent, last_seen = None, 0.0, 0.0
         yield "retry: 5000\n\n"
         while True:
+            # Signed out elsewhere (device limit, password reset, "sign out
+            # other devices", logout in another tab). The session row is
+            # already gone; this is the in-memory note of it. No database.
+            reason = security.stream_revoked(th)
+            if reason:
+                yield f'event: signed-out\ndata: {{"reason": "{reason}"}}\n\n'
+                return
             # Re-checked every wakeup against the in-memory view, so access
             # that lapses mid-stream is noticed within about a second. This is
             # a struct field read: no database, no pooled connection.
@@ -79,6 +88,10 @@ def api_stream():
             if view is None or not view.has_access:
                 yield "event: expired\ndata: {}\n\n"
                 return
+            if time.time() - last_seen > 120:
+                # An open board is a device in use, for the device limit.
+                security.note_seen(th)
+                last_seen = time.time()
             if time.time() > deadline:
                 # Force a reconnect so @paid_required runs again, even if
                 # everything else somehow failed to notice.
@@ -149,6 +162,7 @@ def api_trek_calendar():
         if csrf:
             now = time.time()
             need = []
+            stale = {}
             with state.lock:
                 cadence = state.settings["cadence"]
                 for dt in to_query:
@@ -163,6 +177,8 @@ def api_trek_calendar():
                         cells[dt.isoformat()] = c
                     else:
                         need.append(dt)
+                        if c:
+                            stale[dt.isoformat()] = c
 
             def q(dt):
                 # Same token bucket as the sweep, so browsing the calendar
@@ -170,15 +186,26 @@ def api_trek_calendar():
                 sweeper.PORTAL_BUCKET.acquire()
                 cell = portal.check_target(sess, csrf, {"trek_id": tid, "district_id": did,
                                                         "date": dt.isoformat()})
-                cell.pop("_transport_ok", None)
-                return dt.isoformat(), cell
+                ok, outcome, sample = portal.strip_private(cell)
+                key = f"{tid}_{dt.isoformat()}"
+                health.record(outcome, trek_id=tid, key=key, sample=sample)
+                # A failed or unreadable fetch is not an answer: it must never
+                # overwrite the cached cell.
+                return dt.isoformat(), (cell if ok else None)
 
             if need:
+                fetched = {}
                 with ThreadPoolExecutor(max_workers=config.WORKERS) as ex:
                     for iso, cell in ex.map(q, need):
-                        cells[iso] = cell
+                        if cell is not None:
+                            fetched[iso] = cell
+                        elif iso in stale:
+                            # Couldn't refresh: the older answer, whose
+                            # "checked" time says how old it is, beats a blank.
+                            cells[iso] = stale[iso]
+                cells.update(fetched)
                 with state.lock:
-                    for iso, cell in cells.items():
+                    for iso, cell in fetched.items():
                         state.board_state[f"{tid}_{iso}"] = cell
 
     days = [{"iso": d.isoformat(), "day": d.day, "weekday": d.strftime("%a"),

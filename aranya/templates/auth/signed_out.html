@@ -1,0 +1,31 @@
+{% extends "auth/base.html" %}
+{% block title %}Signed out · Aranya{% endblock %}
+{% block content %}
+<h2>{{ headline }}</h2>
+<div class="lead">
+  {% if reason == 'device_limit' %}
+    {% if by %}Someone signed in on <b>{{ by }}</b>{% if when %} at {{ when }}{% endif %}, so
+    this device was signed out.{% else %}This device was signed out to make room for a new
+    sign-in.{% endif %}
+    An Aranya account can be signed in on {{ max_devices }} devices at once, and the one
+    used least recently makes way.
+    <br><br>
+    If that was you, just sign in again here. If it wasn't, someone else has your
+    password — <a href="{{ url_for('auth.forgot') }}">reset it</a>, which signs out every
+    other device.
+  {% elif reason == 'password_reset' %}
+    {% if when %}At {{ when }}, the{% else %}The{% endif %} password was changed{% if by %}
+    from <b>{{ by }}</b>{% endif %}, which signs out every device. Sign in with the new
+    password. If you didn't change it, <a href="{{ url_for('auth.forgot') }}">reset it now</a>
+    and contact support.
+  {% elif reason == 'signed_out_remotely' %}
+    {% if by %}Someone using <b>{{ by }}</b>{% else %}Another device{% endif %} signed this one
+    out{% if when %} at {{ when }}{% endif %}. If that wasn't you,
+    <a href="{{ url_for('auth.forgot') }}">reset your password</a>.
+  {% else %}
+    Your session on this device has ended. Sign in to pick up where you left off.
+  {% endif %}
+</div>
+<a class="btn" href="{{ url_for('auth.login') }}">Sign in again</a>
+<div class="alt"><a href="{{ url_for('public.landing') }}">Back to Aranya</a></div>
+{% endblock %}

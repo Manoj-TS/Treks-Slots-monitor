@@ -50,6 +50,26 @@ PUBLISH_HEARTBEAT = float(os.environ.get("PUBLISH_HEARTBEAT", "15.0"))
 FORCE_REFRESH_COOLDOWN = int(os.environ.get("FORCE_REFRESH_COOLDOWN", "120"))
 MAX_FORCE_CELLS = int(os.environ.get("MAX_FORCE_CELLS", "120"))
 
+# ── Portal health ─────────────────────────────────────────────────────────── #
+# A scraper fails quietly: a renamed CSS class makes every date look
+# unreleased, and the board shows a calm, wrong answer. These thresholds decide
+# when the pattern of responses means "something is broken", as opposed to one
+# slow request.
+HEALTH_WINDOW_SECONDS = 900           # rolling window the ratios are taken over
+HEALTH_MIN_SAMPLES = 10               # no ratio verdicts on fewer responses
+HEALTH_FAIL_RATIO = 0.5               # share of failed/unparsed responses
+HEALTH_FAIL_STREAK = 5                # consecutive failures, however few overall
+HEALTH_BLOCKED_COUNT = 3              # refusals (403/429/WAF page) in the window
+HEALTH_REGRESSION_TREKS = 3           # treks whose released dates went "unreleased"
+HEALTH_ALERT_AFTER = int(os.environ.get("HEALTH_ALERT_AFTER", "300"))
+HEALTH_CLEAR_AFTER = 180              # quiet this long before calling it over
+HEALTH_REALERT_SECONDS = 6 * 3600     # reminder while a problem is still open
+HEALTH_SAMPLE_BYTES = 200_000
+HEALTH_SAMPLES_KEEP = 30
+HEALTH_SAMPLE_EVERY = 600             # at most one saved page per kind per 10 min
+# Extra recipient for health alerts, on top of every admin account.
+ALERT_EMAIL = os.environ.get("ALERT_EMAIL", "")
+
 # Per-user ceilings, enforced at write time.
 MAX_FAVOURITES_PER_USER = int(os.environ.get("MAX_FAVOURITES_PER_USER", "25"))
 MAX_WATCH_PER_USER = int(os.environ.get("MAX_WATCH_PER_USER", "50"))
@@ -86,6 +106,17 @@ SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "")
 SESSION_COOKIE = "av_session"
 CSRF_COOKIE = "av_csrf"
 SESSION_DAYS = 30
+
+# Concurrent signed-in devices per customer account. Signing in on one more
+# signs out the least recently used. Admins are exempt. One ₹99 subscription is
+# one organiser's board, not a team's — but a phone and a laptop is normal use.
+MAX_DEVICES = int(os.environ.get("MAX_DEVICES", "2"))
+# How often in-memory "last seen" times are written to the sessions table.
+SESSION_TOUCH_SECONDS = 60
+# Forced sign-outs from the device limit within this many days that mark an
+# account as probably shared, in /admin.
+SHARING_WINDOW_DAYS = 30
+SHARING_FLAG_AT = int(os.environ.get("SHARING_FLAG_AT", "6"))
 VERIFY_TOKEN_HOURS = 24
 RESET_TOKEN_MINUTES = 60
 

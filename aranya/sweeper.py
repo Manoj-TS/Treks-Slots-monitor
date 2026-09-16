@@ -25,7 +25,7 @@ import time
 from collections import deque
 from datetime import date, datetime, timedelta
 
-from . import board, config, portal, ratelimit, state, storage, views
+from . import board, config, health, portal, ratelimit, state, storage, views
 
 PORTAL_BUCKET = ratelimit.TokenBucket(config.SWEEP_RPS, burst=10)
 
@@ -292,6 +292,13 @@ def worker_loop():
             with state.lock:
                 state.stats["worker_alive"] = True
 
+            # First, and on its own guard: a bug in the monitor must never be
+            # what stops the board updating.
+            try:
+                health.evaluate()
+            except Exception as e:
+                print(f"[Health] evaluate failed: {e.__class__.__name__}: {e}")
+
             now_wall = time.time()
 
             # Who wants what. Also the moment new dates enter the window.
@@ -327,8 +334,9 @@ def worker_loop():
                     continue
 
             if not csrf:
-                csrf = portal.fetch_csrf(session)
+                csrf, outcome, sample = portal.fetch_csrf_checked(session)
                 if not csrf:
+                    health.record(outcome, sample=sample)
                     bad += 1
                     with state.lock:
                         state.stats["error"] = "Portal connection failed — retrying…"
@@ -351,8 +359,31 @@ def worker_loop():
             # One request in flight, paced by the shared bucket. The calendar
             # endpoint draws from the same budget.
             PORTAL_BUCKET.acquire()
-            cell = portal.check_target(session, csrf, targets[key])
-            ok = cell.pop("_transport_ok", True)
+            tgt = targets[key]
+            cell = portal.check_target(session, csrf, tgt)
+            ok, outcome, sample = portal.strip_private(cell)
+            health.record(outcome, trek_id=tgt["trek_id"], key=key, sample=sample)
+
+            if outcome == "blocked":
+                # Being refused. Back right off and start a fresh portal
+                # session; hammering a refusal is how a soft block turns hard.
+                csrf, session, bad = None, portal.new_session(), 0
+                with state.lock:
+                    state.stats["error"] = "Portal is refusing requests — backing off…"
+                state.mark_changed()
+                with _sched_lock:
+                    _due[key] = time.monotonic() + 60
+                time.sleep(30)
+                continue
+
+            if outcome == "parse_fail":
+                # The portal answered, we just can't read it. Keep the last good
+                # cell (its age keeps growing, which is honest) and don't retry
+                # quickly: re-reading the same unreadable page helps nobody.
+                bad = 0
+                with _sched_lock:
+                    _due[key] = time.monotonic() + config.OPEN_INTERVAL_MIN
+                continue
 
             if not ok:
                 bad += 1

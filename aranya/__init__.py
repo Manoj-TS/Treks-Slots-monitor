@@ -31,6 +31,21 @@ def create_app():
         security.load_session()
         return security.check_csrf()
 
+    app.after_request(security.clear_dead_cookie)
+
+    from datetime import timedelta, timezone
+    ist = timezone(timedelta(hours=5, minutes=30))
+
+    @app.template_filter("ist")
+    def _ist(value, fmt="%d %b %Y, %H:%M"):
+        """Database times are timezone-aware; show them the way customers read
+        a clock. Naive values are left as they are rather than guessed at."""
+        if value is None:
+            return ""
+        if getattr(value, "tzinfo", None) is not None:
+            value = value.astimezone(ist)
+        return value.strftime(fmt)
+
     from . import oauth
     google_ready = oauth.init_app(app)
     if not google_ready:

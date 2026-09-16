@@ -11,9 +11,10 @@ import re
 import uuid
 from datetime import timedelta
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import (Blueprint, Response, flash, g, redirect, render_template, request,
+                   url_for)
 
-from . import accounts, config, db, mail, security, state, storage
+from . import accounts, config, db, health, mail, security, state, storage
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -25,11 +26,20 @@ def _list_users():
         rows = conn.execute(
             "SELECT u.id, u.email, u.name, u.email_verified, u.is_admin, u.status,"
             "       u.access_until, u.created_at, u.last_login_at,"
-            "       (SELECT count(*) FROM user_favourites f WHERE f.user_id = u.id)"
-            " FROM users u ORDER BY u.created_at DESC").fetchall()
+            "       (SELECT count(*) FROM user_favourites f WHERE f.user_id = u.id),"
+            "       (SELECT count(*) FROM sessions s"
+            "         WHERE s.user_id = u.id AND s.expires_at > now()),"
+            # Sign-ins that pushed another device out. A steady stream of these
+            # is what one account passed around a team looks like.
+            "       (SELECT count(*) FROM session_revocations r"
+            "         WHERE r.user_id = u.id AND r.reason = 'device_limit'"
+            "           AND r.revoked_at > now() - make_interval(days => %s))"
+            " FROM users u ORDER BY u.created_at DESC",
+            (config.SHARING_WINDOW_DAYS,)).fetchall()
     return [{"id": r[0], "email": r[1], "name": r[2], "verified": r[3], "is_admin": r[4],
              "status": r[5], "access_until": r[6], "created_at": r[7],
-             "last_login": r[8], "favourites": r[9]} for r in rows]
+             "last_login": r[8], "favourites": r[9], "sessions": r[10],
+             "pushed_out": r[11]} for r in rows]
 
 
 def _record_manual_payment(user_id: int, days: int, before, after, note: str,
@@ -58,7 +68,64 @@ def index():
                            cadence_max=config.OPEN_INTERVAL_MAX,
                            access_days=config.ACCESS_DAYS,
                            price=config.PRICE_RUPEES,
-                           db_ready=storage.db_ready())
+                           db_ready=storage.db_ready(),
+                           health=health.snapshot(),
+                           incidents=health.recent_events(8),
+                           samples=health.recent_samples(8),
+                           max_devices=config.MAX_DEVICES,
+                           sharing_days=config.SHARING_WINDOW_DAYS,
+                           sharing_flag=config.SHARING_FLAG_AT,
+                           alerts_to_ok=config.mail_configured())
+
+
+@bp.route("/admin/health/sample/<int:sample_id>")
+@security.admin_required
+def health_sample(sample_id):
+    """A saved portal response, for working out what changed.
+
+    It is someone else's HTML, so it is never rendered: plain text, no MIME
+    sniffing, and a sandbox CSP in case a browser ignores both."""
+    s = health.get_sample(sample_id)
+    if not s:
+        return "No such sample.", 404
+    head = [
+        f"Sample #{s['id']} — {s['kind']} ({s['outcome']})",
+        f"Captured:  {s['captured'].isoformat()}",
+        f"URL:       {s['url'] or '-'}",
+        f"HTTP:      {s['status'] if s['status'] is not None else 'no response'}",
+        f"Trek/date: {s['trek_id'] or '-'} / {s['date'] or '-'}",
+        f"Note:      {s['note'] or '-'}",
+        f"Body:      {s['bytes'] or 0} bytes"
+        + (" (truncated)" if (s['bytes'] or 0) > len(s['body']) else ""),
+        "Headers:",
+        *[f"  {k}: {v}" for k, v in s["headers"].items()],
+        "",
+        "-" * 72,
+        "",
+    ]
+    return Response("\n".join(head) + s["body"], mimetype="text/plain",
+                    headers={"X-Content-Type-Options": "nosniff",
+                             "Content-Security-Policy": "sandbox",
+                             "Cache-Control": "no-store"})
+
+
+@bp.route("/admin/signout", methods=["POST"])
+@security.admin_required
+def signout_user():
+    """End every session an account has — for a shared or compromised one."""
+    try:
+        user_id = int(request.form.get("user_id"))
+    except (TypeError, ValueError):
+        flash("Bad request.", "error")
+        return redirect(url_for("admin.index"))
+    if user_id == g.user.id:
+        flash("Use your own account page to sign out your other devices.", "error")
+        return redirect(url_for("admin.index"))
+    ended = accounts.revoke_sessions(user_id, "admin", by_device="an administrator")
+    security.revoke_tokens(ended, "admin")
+    security.evict_user(user_id)
+    flash(f"Signed out {len(ended)} session{'s' if len(ended) != 1 else ''}.", "ok")
+    return redirect(url_for("admin.index"))
 
 
 @bp.route("/admin/invite", methods=["POST"])

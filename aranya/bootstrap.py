@@ -2,7 +2,7 @@
 
 import threading
 
-from . import config, discovery, storage, sweeper
+from . import config, discovery, security, storage, sweeper
 
 _started = False
 
@@ -20,3 +20,4 @@ def start_background():
     storage.reload_views()
     threading.Thread(target=discovery.discovery_loop, daemon=True).start()
     threading.Thread(target=sweeper.supervised_worker, daemon=True).start()
+    security.start_maintenance()
